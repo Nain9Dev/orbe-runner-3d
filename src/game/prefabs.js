@@ -65,7 +65,7 @@ definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
     player: {
       spawn: position.clone(),
       lives: CONFIG.player.lives,
-      invulnerable: CONFIG.player.respawnInvuln, // margen de cortesía al aparecer
+      invulnerable: CONFIG.player.startGrace, // margen de cortesía al empezar
     },
     render: { mesh: mesh(GEO.sphere, MAT.player, v3(r, r, r)) },
   };

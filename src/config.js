@@ -15,6 +15,7 @@ export const CONFIG = {
     radius: 0.6,
     lives: 3,
     respawnInvuln: 1.5, // segundos de invulnerabilidad tras recibir daño
+    startGrace: 3,      // margen de cortesía al empezar un nivel
   },
   camera: {
     distance: 9,
@@ -28,7 +29,7 @@ export const CONFIG = {
   enemy: {
     speed: 4.2,
     radius: 0.7,
-    aggroRange: 16,    // fuera de este radio patrullan en vez de perseguir
+    aggroRange: 12,    // fuera de este radio patrullan en vez de perseguir
   },
   pickup: {
     radius: 0.55,
