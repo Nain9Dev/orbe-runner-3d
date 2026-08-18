@@ -1,0 +1,10 @@
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+
+# Node (solo si algún día se añaden herramientas de desarrollo)
+node_modules/

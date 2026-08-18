@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbe Runner 3D</title>
+  <link rel="stylesheet" href="./src/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%236ee7ff'/></svg>" />
+
+  <!--
+    Única dependencia: three.js r160 (MIT), incluida en ./vendor para que el
+    juego funcione sin internet, sin npm y sin proceso de build.
+    Para usar el CDN en su lugar: "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD: capa DOM independiente del render 3D -->
+  <div id="hud">
+    <div class="hud-row">
+      <span class="chip" id="hud-level">Nivel 1</span>
+      <span class="chip" id="hud-score">Orbes 0/0</span>
+      <span class="chip" id="hud-lives">Vidas 3</span>
+      <span class="chip" id="hud-fps">-- FPS</span>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="panel">
+      <h1 id="overlay-title">Orbe Runner 3D</h1>
+      <p id="overlay-text">Recoge todos los orbes y evita a los cazadores.</p>
+      <ul class="keys">
+        <li><b>WASD</b> moverse</li>
+        <li><b>Espacio</b> saltar</li>
+        <li><b>Ratón</b> girar cámara</li>
+        <li><b>Esc</b> soltar el ratón</li>
+      </ul>
+      <button id="start">Jugar</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
