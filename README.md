@@ -1,5 +1,7 @@
 # Orbe Runner 3D
 
+**Jugar online: https://orbe.naindev.com**
+
 Videojuego 3D open source hecho desde cero: recoge todos los orbes de la arena
 esquivando a los cazadores y pasa de nivel. Cada nivel se genera solo y es más
 grande y más rápido que el anterior.
@@ -27,6 +29,31 @@ Hace falta un servidor porque los módulos ES no se cargan desde `file://`.
 | Ratón | Girar la cámara |
 | `Esc` | Soltar el ratón (clic para recuperarlo) |
 
+## Publicarlo en internet
+
+El juego es HTML estático, así que cualquier hosting de estáticos vale y todos
+los gratuitos aguantan de sobra: se sirve desde CDN y no hay servidor que
+escalar. Este repo está preparado para **GitHub Pages**:
+
+- `CNAME` ya apunta a `orbe.naindev.com`.
+- `.nojekyll` evita que Pages procese los archivos con Jekyll.
+- Cada `git push` a `main` republica el sitio solo.
+
+Pasos, una sola vez:
+
+1. En el repo: **Settings → Pages → Source: _Deploy from a branch_ → `main` → `/ (root)` → Save**.
+2. En el DNS de `naindev.com`, un registro nuevo:
+
+   | Tipo | Nombre | Valor |
+   |---|---|---|
+   | CNAME | `orbe` | `nain9dev.github.io` |
+
+3. Cuando GitHub emita el certificado (unos minutos), marca **Enforce HTTPS**
+   en Settings → Pages. Hace falta HTTPS para que el bloqueo de ratón funcione.
+
+Sin dominio propio, el juego queda igualmente en
+`https://nain9dev.github.io/orbe-runner-3d/` (borra el archivo `CNAME`).
+
 ## Cómo está montado
 
 Es un **ECS** (Entity–Component–System) minúsculo, unas 200 líneas de núcleo:
@@ -39,6 +66,8 @@ Es un **ECS** (Entity–Component–System) minúsculo, unas 200 líneas de núc
 ```
 orbe-runner-3d/
 ├── index.html            # canvas + HUD + importmap
+├── CNAME                 # dominio propio para GitHub Pages
+├── preview.png           # imagen de vista previa al compartir el enlace
 └── src/
     ├── main.js           # monta el mundo y enchufa los sistemas (el "guion" del juego)
     ├── config.js         # todos los números ajustables

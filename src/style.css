@@ -95,3 +95,8 @@ html, body {
 }
 
 #start:hover { filter: brightness(1.1); }
+
+#start:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}

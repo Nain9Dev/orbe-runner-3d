@@ -23,6 +23,11 @@ export function hudSystem(engine, input) {
     init(world) {
       let pending = { level: 1 };
 
+      // El botón nace desactivado en el HTML: si la red va lenta, nadie pulsa
+      // "Jugar" antes de que el motor esté cargado.
+      el.button.disabled = false;
+      el.button.textContent = 'Jugar';
+
       el.button.addEventListener('click', () => {
         input.requestLock();               // el bloqueo de ratón exige un gesto del usuario
         world.events.emit('game:start', pending);
