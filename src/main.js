@@ -9,6 +9,7 @@ import { enemySystem } from './systems/enemy.js';
 import { physicsSystem } from './systems/physics.js';
 import { triggerSystem } from './systems/triggers.js';
 import { cameraSystem } from './systems/camera.js';
+import { avatarSystem } from './systems/avatar.js';
 import { gameSystem } from './systems/game.js';
 import { hudSystem } from './systems/hud.js';
 
@@ -37,6 +38,7 @@ world.addSystem(enemySystem());        // IA -> velocidad
 world.addSystem(physicsSystem());      // velocidad -> posición + colisiones
 world.addSystem(triggerSystem());      // contactos -> eventos de juego
 world.addSystem(cameraSystem(input));  // seguimiento de cámara
+world.addSystem(avatarSystem());        // vida propia de los modelos
 world.addSystem(gameSystem());         // reglas: orbes, vidas, niveles
 world.addSystem(hudSystem(engine, input)); // marcadores y menús
 

@@ -18,13 +18,13 @@ export const CONFIG = {
     startGrace: 3,      // margen de cortesía al empezar un nivel
   },
   camera: {
-    distance: 9,
-    height: 3.4,
+    distance: 6.8,   // más cerca: el protagonista se lee
+    height: 2.9,
     sensitivity: 0.0022,
     pitchMin: -0.5,
     pitchMax: 1.1,
     smooth: 12,        // mayor = cámara más pegada al jugador
-    fov: 65,
+    fov: 62,
   },
   enemy: {
     speed: 4.2,

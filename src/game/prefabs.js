@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
+import { createOrbi } from './models.js';
 
 /**
  * Registro de prefabs: nombre -> función que devuelve componentes.
@@ -38,9 +39,9 @@ const MAT = {
   player: new THREE.MeshStandardMaterial({ color: 0x6ee7ff, roughness: 0.35, metalness: 0.1 }),
   enemy: new THREE.MeshStandardMaterial({ color: 0xff5470, roughness: 0.5 }),
   orb: new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x6b4b00, roughness: 0.25 }),
-  ground: new THREE.MeshStandardMaterial({ color: 0x27325c, roughness: 0.95 }),
-  platform: new THREE.MeshStandardMaterial({ color: 0x3d4f8f, roughness: 0.8 }),
-  wall: new THREE.MeshStandardMaterial({ color: 0x1b2445, roughness: 1 }),
+  ground: new THREE.MeshStandardMaterial({ color: 0x232a58, roughness: 0.95 }),
+  platform: new THREE.MeshStandardMaterial({ color: 0x4b3f8f, roughness: 0.75, metalness: 0.15 }),
+  wall: new THREE.MeshStandardMaterial({ color: 0x141833, roughness: 1 }),
 };
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -58,6 +59,9 @@ function mesh(geometry, material, scale) {
 
 definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
   const r = CONFIG.player.radius;
+  // El protagonista es único, así que tiene su propio modelo animado (no se
+  // comparte con nadie) en lugar de una geometría del catálogo.
+  const orbi = createOrbi({ radius: r });
   return {
     tag: 'player',
     transform: { position: position.clone(), yaw: 0 },
@@ -67,7 +71,8 @@ definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
       lives: CONFIG.player.lives,
       invulnerable: CONFIG.player.startGrace, // margen de cortesía al empezar
     },
-    render: { mesh: mesh(GEO.sphere, MAT.player, v3(r, r, r)) },
+    avatar: { api: orbi },
+    render: { mesh: orbi.group },
   };
 });
 
