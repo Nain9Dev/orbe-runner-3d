@@ -10,6 +10,8 @@ const move = new THREE.Vector3();
  * aquí; el resto del juego no se entera.
  */
 export function playerSystem(input) {
+  let wasGrounded = true;
+
   return {
     name: 'player',
 
@@ -38,6 +40,10 @@ export function playerSystem(input) {
       const control = body.grounded ? 1 : CONFIG.player.airControl;
       body.velocity.x += (move.x - body.velocity.x) * Math.min(1, control * 14 * dt);
       body.velocity.z += (move.z - body.velocity.z) * Math.min(1, control * 14 * dt);
+
+      // Aviso de aterrizaje: lo usan las partículas de polvo.
+      if (body.grounded && !wasGrounded) world.events.emit('player:landed', e);
+      wasGrounded = body.grounded;
 
       if (body.grounded && input.down('Space')) {
         body.velocity.y = CONFIG.player.jump;

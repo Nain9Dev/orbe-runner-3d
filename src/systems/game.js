@@ -57,6 +57,7 @@ export function gameSystem() {
 function damage(world, player) {
   if (world.state.status !== 'playing' || player.player.invulnerable > 0) return;
 
+  const hitAt = player.transform.position.clone(); // antes de reaparecer
   player.player.lives -= 1;
   world.state.lives = player.player.lives;
   player.player.invulnerable = CONFIG.player.respawnInvuln;
@@ -71,7 +72,7 @@ function damage(world, player) {
     }
   }
 
-  world.events.emit('player:damaged', player);
+  world.events.emit('player:damaged', { player, at: hitAt });
 
   if (player.player.lives <= 0) {
     world.state.status = 'gameover';

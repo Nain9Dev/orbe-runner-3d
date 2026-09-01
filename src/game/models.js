@@ -16,7 +16,7 @@ const TAU = Math.PI * 2;
 
 /** Degradado radial en un canvas: el truco barato para los brillos. */
 let GLOW_TEXTURE = null;
-function glowTexture() {
+export function glowTexture() {
   if (GLOW_TEXTURE) return GLOW_TEXTURE;
   const size = 128;
   const canvas = document.createElement('canvas');
@@ -386,6 +386,199 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
       for (const blush of blushes) {
         blush.material.opacity = damp(blush.material.opacity, blushAlpha, 8, dt);
       }
+    },
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * Recursos compartidos de los modelos que se repiten.
+ *
+ * Orbi es único y puede permitirse materiales propios; de cazadores y orbes
+ * hay decenas, así que geometría y material se crean UNA vez y se reparten.
+ * Lo que varía por instancia son las transformaciones, que salen gratis.
+ * ------------------------------------------------------------------------- */
+const cache = {};
+const once = (key, make) => (cache[key] ??= make());
+
+/* ---------------------------------------------------------------------------
+ * CAZADOR — el enemigo.
+ *
+ * Lo contrario de Orbi a propósito: un solo ojo en vez de dos, ángulos en vez
+ * de curvas, rojo en vez de cian y púas que se abren cuando te ha visto.
+ * ------------------------------------------------------------------------- */
+export function createHunter({ radius: r = 0.7 } = {}) {
+  const group = new THREE.Group();
+  const body = new THREE.Group();
+  group.add(body);
+
+  const hullMat = once('hunterHull', () => new THREE.MeshStandardMaterial({
+    color: 0x37101f,
+    emissive: new THREE.Color(0x8e1230),
+    emissiveIntensity: 0.55,
+    roughness: 0.55,
+    metalness: 0.35,
+    flatShading: true,
+  }));
+  const hull = new THREE.Mesh(
+    once('hunterHullGeo', () => new THREE.IcosahedronGeometry(r * 0.78, 1)),
+    hullMat,
+  );
+  hull.castShadow = true;
+  body.add(hull);
+
+  // Púas: se abren cuando persigue, se pegan al cuerpo cuando patrulla.
+  const spikeGeo = once('hunterSpikeGeo', () => new THREE.ConeGeometry(r * 0.13, r * 0.42, 5));
+  const spikeMat = once('hunterSpikeMat', () => new THREE.MeshStandardMaterial({
+    color: 0xd83f5e, roughness: 0.35, metalness: 0.7, flatShading: true,
+  }));
+  const spikes = new THREE.Group();
+  for (let i = 0; i < 7; i++) {
+    const spike = new THREE.Mesh(spikeGeo, spikeMat);
+    // Repartidas por la esfera con la espiral de Fibonacci: nada de retícula.
+    const y = 1 - (i / 6) * 1.7;
+    const rad = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = i * 2.399;
+    const dir = new THREE.Vector3(Math.cos(theta) * rad, y, Math.sin(theta) * rad).normalize();
+    spike.position.copy(dir).multiplyScalar(r * 0.8);
+    spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    spike.castShadow = true;
+    spikes.add(spike);
+  }
+  body.add(spikes);
+
+  // Ojo único: la parte que da miedo. Sigue al jugador.
+  const eye = new THREE.Group();
+  eye.position.z = r * 0.58;
+  body.add(eye);
+
+  const sclera = new THREE.Mesh(
+    once('hunterEyeGeo', () => new THREE.SphereGeometry(r * 0.44, 18, 14)),
+    once('hunterEyeMat', () => new THREE.MeshStandardMaterial({
+      color: 0xffe4e9, emissive: 0x552028, emissiveIntensity: 0.5, roughness: 0.25,
+    })),
+  );
+  eye.add(sclera);
+
+  const iris = new THREE.Mesh(
+    once('hunterIrisGeo', () => new THREE.SphereGeometry(r * 0.25, 16, 12)),
+    once('hunterIrisMat', () => new THREE.MeshStandardMaterial({
+      color: 0x120308, emissive: new THREE.Color(0xff2d55), emissiveIntensity: 1.6, roughness: 0.2,
+    })),
+  );
+  iris.position.z = r * 0.28;
+  iris.scale.set(1, 1, 0.6);
+  eye.add(iris);
+
+  // Aura: delata a distancia que eso te está buscando.
+  const aura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0xff3b5c,
+    transparent: true,
+    opacity: 0.35,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  aura.scale.setScalar(r * 4);
+  body.add(aura);
+
+  const phase = Math.random() * TAU;
+  let t = 0;
+  let aggro = 0;
+
+  return {
+    group,
+
+    update(dt, s = {}) {
+      t += dt;
+      const speed = s.speed ?? 0;
+      const dist = s.threat ?? Infinity;      // distancia al jugador
+      aggro = damp(aggro, dist < 16 ? 1 : 0, 3, dt);
+
+      // Flota y cabecea; cuanto más cerca está de ti, más nervioso.
+      const nerves = clamp(1 - dist / 10, 0, 1);
+      body.position.y = Math.sin(t * 2.4 + phase) * 0.09 + nerves * Math.sin(t * 30) * 0.03;
+      body.rotation.x = clamp(speed * 0.03, 0, 0.35) + Math.sin(t * 1.9 + phase) * 0.05;
+      body.rotation.z = Math.sin(t * 1.3 + phase) * 0.08 + nerves * Math.cos(t * 27) * 0.04;
+
+      // El casco gira lento: da sensación de máquina, no de pelota.
+      hull.rotation.y += dt * (0.4 + speed * 0.12);
+      spikes.rotation.y -= dt * (0.25 + speed * 0.1);
+      spikes.scale.setScalar(0.75 + aggro * 0.45 + nerves * 0.15);
+
+      // El ojo te mira: dos ángulos a partir de la dirección local al jugador.
+      eye.rotation.y = damp(eye.rotation.y, clamp(s.lookX ?? 0, -1, 1) * 0.8, 10, dt);
+      eye.rotation.x = damp(eye.rotation.x, -clamp(s.lookY ?? 0, -1, 1) * 0.6, 10, dt);
+      iris.scale.setScalar(1 - nerves * 0.25); // pupila que se cierra al acercarse
+
+      aura.material.opacity = 0.18 + aggro * 0.3 + Math.sin(t * 6 + phase) * 0.05;
+      aura.scale.setScalar(r * (3.6 + aggro * 1.1));
+    },
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * ORBE — el coleccionable.
+ *
+ * Un cristal dentro de una jaula giroscópica. Se ve desde lejos gracias al
+ * halo, que es lo que hace que apetezca ir a por él.
+ * ------------------------------------------------------------------------- */
+export function createOrbGem({ radius: r = 0.55 } = {}) {
+  const group = new THREE.Group();
+
+  const gem = new THREE.Mesh(
+    once('orbGemGeo', () => new THREE.OctahedronGeometry(r * 0.95, 0)),
+    once('orbGemMat', () => new THREE.MeshStandardMaterial({
+      color: 0xffe6a3,
+      emissive: new THREE.Color(0xffb020),
+      emissiveIntensity: 1.5,
+      roughness: 0.2,
+      metalness: 0.3,
+      flatShading: true,
+    })),
+  );
+  gem.castShadow = true;
+  group.add(gem);
+
+  // Jaula: dos aros cruzados que giran en sentidos distintos.
+  const ringGeo = once('orbRingGeo', () => new THREE.TorusGeometry(r * 1.15, r * 0.06, 8, 28));
+  const ringMat = once('orbRingMat', () => new THREE.MeshStandardMaterial({
+    color: 0xfff1cf,
+    emissive: new THREE.Color(0xffc44d),
+    emissiveIntensity: 0.6,
+    metalness: 1,
+    roughness: 0.25,
+  }));
+  const ringA = new THREE.Mesh(ringGeo, ringMat);
+  const ringB = new THREE.Mesh(ringGeo, ringMat);
+  ringB.rotation.y = Math.PI / 2;
+  group.add(ringA, ringB);
+
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0xffc861,
+    transparent: true,
+    opacity: 0.5,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  halo.scale.setScalar(r * 4.5);
+  group.add(halo);
+
+  const phase = Math.random() * TAU;
+  let t = 0;
+
+  return {
+    group,
+
+    update(dt) {
+      t += dt;
+      gem.rotation.y += dt * 1.4;
+      gem.rotation.x += dt * 0.5;
+      ringA.rotation.z += dt * 0.9;
+      ringB.rotation.x -= dt * 1.1;
+      const pulse = Math.sin(t * 2.6 + phase);
+      halo.scale.setScalar(r * (4.3 + pulse * 0.5));
+      halo.material.opacity = 0.42 + pulse * 0.12;
     },
   };
 }

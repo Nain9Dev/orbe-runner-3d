@@ -41,6 +41,12 @@ export function avatarSystem() {
           const orb = nearest(world, e, 'pickup');
           const target = state.threat < 8 ? enemy : orb;
           Object.assign(state, localLook(e, target));
+        } else if (e.enemy) {
+          // Los cazadores solo tienen ojos para el jugador.
+          const player = world.first('player', 'transform');
+          const dist = player ? e.transform.position.distanceTo(player.transform.position) : Infinity;
+          state.threat = dist;
+          Object.assign(state, localLook(e, player ? { entity: player } : null));
         }
 
         e.avatar.api.update(dt, state);

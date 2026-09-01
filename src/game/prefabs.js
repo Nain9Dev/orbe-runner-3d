@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { createOrbi } from './models.js';
+import { createOrbi, createHunter, createOrbGem } from './models.js';
 
 /**
  * Registro de prefabs: nombre -> función que devuelve componentes.
@@ -30,15 +30,10 @@ export function prefabNames() {
  * la memoria (ni el driver) se resientan.
  * ------------------------------------------------------------------------ */
 const GEO = {
-  sphere: new THREE.SphereGeometry(1, 20, 14),
   box: new THREE.BoxGeometry(1, 1, 1),
-  orb: new THREE.IcosahedronGeometry(1, 0),
 };
 
 const MAT = {
-  player: new THREE.MeshStandardMaterial({ color: 0x6ee7ff, roughness: 0.35, metalness: 0.1 }),
-  enemy: new THREE.MeshStandardMaterial({ color: 0xff5470, roughness: 0.5 }),
-  orb: new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x6b4b00, roughness: 0.25 }),
   ground: new THREE.MeshStandardMaterial({ color: 0x232a58, roughness: 0.95 }),
   platform: new THREE.MeshStandardMaterial({ color: 0x4b3f8f, roughness: 0.75, metalness: 0.15 }),
   wall: new THREE.MeshStandardMaterial({ color: 0x141833, roughness: 1 }),
@@ -78,23 +73,27 @@ definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
 
 definePrefab('enemy', ({ position = v3(), speed = CONFIG.enemy.speed } = {}) => {
   const r = CONFIG.enemy.radius;
+  const hunter = createHunter({ radius: r });
   return {
     tag: 'enemy',
     transform: { position: position.clone(), yaw: 0 },
     body: { velocity: v3(), radius: r, grounded: false },
     enemy: { speed, home: position.clone(), wander: v3() },
     hazard: { radius: r + 0.2 },
-    render: { mesh: mesh(GEO.sphere, MAT.enemy, v3(r, r * 0.85, r)) },
+    avatar: { api: hunter },
+    render: { mesh: hunter.group },
   };
 });
 
 definePrefab('orb', ({ position = v3(), value = 1 } = {}) => {
   const r = CONFIG.pickup.radius;
+  const gem = createOrbGem({ radius: r });
   return {
     tag: 'orb',
     transform: { position: position.clone(), yaw: 0 },
     pickup: { value, spin: CONFIG.pickup.spin, base: position.y },
-    render: { mesh: mesh(GEO.orb, MAT.orb, v3(r, r, r)) },
+    avatar: { api: gem },
+    render: { mesh: gem.group },
   };
 });
 
