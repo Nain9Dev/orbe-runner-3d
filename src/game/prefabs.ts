@@ -56,7 +56,7 @@ definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
   const r = CONFIG.player.radius;
   // El protagonista es único, así que tiene su propio modelo animado (no se
   // comparte con nadie) en lugar de una geometría del catálogo.
-  const orbi = createOrbi({ radius: r });
+  const orbi = createOrbi({ radius: r, color: CONFIG.player.color });
   return {
     tag: 'player',
     transform: { position: position.clone(), yaw: 0 },

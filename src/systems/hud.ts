@@ -21,12 +21,75 @@ export function hudSystem(engine, input) {
     name: 'hud',
 
     init(world) {
-      let pending = { level: 1 };
+      let pending = { level: parseInt(localStorage.getItem('orbi_level') || '1') };
+      
+      // Color por defecto en Configuración persistida
+      const savedColor = localStorage.getItem('orbi_color');
+      if (savedColor) {
+        import('../config.js').then(m => m.CONFIG.player.color = parseInt(savedColor, 16));
+      }
 
-      // El botón nace desactivado en el HTML: si la red va lenta, nadie pulsa
-      // "Jugar" antes de que el motor esté cargado.
       el.button.disabled = false;
       el.button.textContent = 'Jugar';
+
+      // Elementos de Ajustes
+      const mainContent = document.querySelector('#overlay > div:first-child');
+      const settingsPanel = document.getElementById('settings-panel');
+      const btnSettings = document.getElementById('btn-settings');
+      const btnSave = document.getElementById('btn-save');
+      const lvlUp = document.getElementById('lvl-up');
+      const lvlDown = document.getElementById('lvl-down');
+      const lvlDisplay = document.getElementById('lvl-display');
+      const colorBtns = document.querySelectorAll('.color-btn');
+
+      let currentLevel = pending.level;
+      lvlDisplay.textContent = currentLevel;
+
+      // Aplicar color activo en UI
+      if (savedColor) {
+        colorBtns.forEach(b => {
+          b.classList.remove('active');
+          if (b.dataset.color === savedColor) b.classList.add('active');
+        });
+      }
+
+      // Alternar Paneles
+      btnSettings.addEventListener('click', () => {
+        mainContent.classList.add('hidden');
+        settingsPanel.classList.remove('hidden');
+      });
+
+      btnSave.addEventListener('click', () => {
+        settingsPanel.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+      });
+
+      // Lógica Selector de Nivel
+      lvlUp.addEventListener('click', () => {
+        currentLevel = Math.min(20, currentLevel + 1);
+        lvlDisplay.textContent = currentLevel;
+        pending.level = currentLevel;
+        localStorage.setItem('orbi_level', currentLevel.toString());
+      });
+
+      lvlDown.addEventListener('click', () => {
+        currentLevel = Math.max(1, currentLevel - 1);
+        lvlDisplay.textContent = currentLevel;
+        pending.level = currentLevel;
+        localStorage.setItem('orbi_level', currentLevel.toString());
+      });
+
+      // Lógica Selector de Color
+      colorBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          colorBtns.forEach(b => b.classList.remove('active'));
+          const target = e.target as HTMLElement;
+          target.classList.add('active');
+          const colorHex = target.dataset.color;
+          localStorage.setItem('orbi_color', colorHex);
+          import('../config.js').then(m => m.CONFIG.player.color = parseInt(colorHex, 16));
+        });
+      });
 
       el.button.addEventListener('click', () => {
         input.requestLock();               // el bloqueo de ratón exige un gesto del usuario
@@ -38,8 +101,14 @@ export function hudSystem(engine, input) {
         el.text.textContent = text;
         el.button.hidden = !button;
         if (button) el.button.textContent = button;
-        if (action) pending = action;
+        if (action) {
+            pending = action;
+            currentLevel = pending.level;
+            lvlDisplay.textContent = currentLevel;
+        }
         el.overlay.classList.remove('hidden');
+        mainContent.classList.remove('hidden');
+        settingsPanel.classList.add('hidden');
       });
 
       world.events.on('ui:hide', () => el.overlay.classList.add('hidden'));

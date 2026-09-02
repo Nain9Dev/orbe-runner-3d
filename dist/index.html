@@ -18,8 +18,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2305d9e8'/></svg>" />
 
   <!-- Elimina el import map, Vite resuelve three -->
-  <script type="module" crossorigin src="./assets/index-D5QWaB8Q.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-wUbjE8ER.css">
+  <script type="module" crossorigin src="./assets/index-CSv7kmqV.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-C6uvovOQ.css">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -44,7 +44,35 @@
         <li><b>Ratón</b> girar cámara</li>
         <li><b>Esc</b> soltar el ratón</li>
       </ul>
-      <button id="start" disabled>Cargando…</button>
+      <div style="display: flex; gap: 16px; justify-content: center; margin-top: 20px;">
+        <button id="start" disabled>Cargando...</button>
+        <button id="btn-settings" class="btn-outline">⚙️ Ajustes</button>
+      </div>
+    </div>
+    
+    <div id="settings-panel" class="panel hidden">
+      <h1>Ajustes</h1>
+      
+      <div class="setting-group">
+        <label>Nivel Inicial:</label>
+        <div class="level-selector">
+          <button id="lvl-down" class="btn-icon">-</button>
+          <span id="lvl-display">1</span>
+          <button id="lvl-up" class="btn-icon">+</button>
+        </div>
+      </div>
+      
+      <div class="setting-group">
+        <label>Color de Orbi:</label>
+        <div class="color-picker" id="color-picker">
+          <button class="color-btn active" data-color="0x6ee7ff" style="background: #6ee7ff; box-shadow: 0 0 10px #6ee7ff;"></button>
+          <button class="color-btn" data-color="0xff2a6d" style="background: #ff2a6d; box-shadow: 0 0 10px #ff2a6d;"></button>
+          <button class="color-btn" data-color="0xffc44d" style="background: #ffc44d; box-shadow: 0 0 10px #ffc44d;"></button>
+          <button class="color-btn" data-color="0x39ff14" style="background: #39ff14; box-shadow: 0 0 10px #39ff14;"></button>
+        </div>
+      </div>
+      
+      <button id="btn-save" class="btn-outline" style="margin-top: 30px;">Guardar y Volver</button>
     </div>
   </div>
 

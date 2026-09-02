@@ -16,6 +16,7 @@ export const CONFIG = {
     lives: 3,
     respawnInvuln: 1.5, // segundos de invulnerabilidad tras recibir daño
     startGrace: 3,      // margen de cortesía al empezar un nivel
+    color: 0x6ee7ff,    // Cyan por defecto
   },
   camera: {
     distance: 6.8,   // más cerca: el protagonista se lee

@@ -151,3 +151,100 @@ html, body {
   box-shadow: none;
   cursor: not-allowed;
 }
+
+/* Ajustes Extra */
+.btn-outline {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 12px 24px;
+  border-radius: 30px;
+  border: 1px solid var(--cyan);
+  cursor: pointer;
+  color: var(--cyan);
+  background: rgba(5, 217, 232, 0.1);
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(5, 217, 232, 0.2);
+  box-shadow: 0 0 15px rgba(5, 217, 232, 0.4);
+}
+
+.setting-group {
+  margin: 24px 0;
+  text-align: left;
+}
+
+.setting-group label {
+  display: block;
+  font-size: 14px;
+  color: #a0a8cc;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.level-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: rgba(0,0,0,0.3);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+#lvl-display {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  min-width: 40px;
+  text-align: center;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--glass-bg);
+  color: var(--cyan);
+  font-size: 20px;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--cyan);
+  color: #000;
+}
+
+.color-picker {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.color-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.color-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-btn.active {
+  border: 2px solid #fff;
+  transform: scale(1.2);
+}
+
+.hidden {
+  display: none !important;
+}
