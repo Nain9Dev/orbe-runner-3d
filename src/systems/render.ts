@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CONFIG } from '../config.js';
 
 /**
@@ -48,6 +51,16 @@ export function renderSystem(canvas) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
+
+  const composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+  
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+  bloomPass.threshold = 0.2;
+  bloomPass.strength = 1.2;
+  bloomPass.radius = 0.5;
+  composer.addPass(bloomPass);
 
   let currentTier = -1;
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -141,6 +154,7 @@ export function renderSystem(canvas) {
     const w = canvas.clientWidth || window.innerWidth;
     const h = canvas.clientHeight || window.innerHeight;
     renderer.setSize(w, h, false);
+    if (typeof composer !== 'undefined') composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
@@ -214,14 +228,17 @@ export function renderSystem(canvas) {
       import('../config.js').then(m => {
         const isLow = m.CONFIG.graphics.lowQuality;
         renderer.setPixelRatio(isLow ? 1 : Math.min(devicePixelRatio, 2));
+        composer.setPixelRatio(isLow ? 1 : Math.min(devicePixelRatio, 2));
         renderer.shadowMap.enabled = !isLow;
+        bloomPass.enabled = !isLow; // Desactivar bloom en low quality
       });
 
-      renderer.render(scene, camera);
+      composer.render();
     },
 
     dispose() {
       window.removeEventListener('resize', resize);
+      composer.dispose();
       renderer.dispose();
     },
   };

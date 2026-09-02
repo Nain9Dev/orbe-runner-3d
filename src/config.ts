@@ -42,12 +42,14 @@ export const CONFIG = {
     radius: 0.55,
     spin: 2.2,
   },
-  // Progresión: cada nivel es una fórmula, no una lista escrita a mano.
+  // Progresión Infinita:
   level: (n) => ({
-    orbs: 5 + n * 2,
-    enemies: Math.min(1 + Math.floor(n * 0.4), 5), // Max 5 enemigos
-    platforms: 4 + Math.floor(n * 1.5),
-    enemySpeed: CONFIG.enemy.speed + n * 0.15, // Crecen más despacio
-    arenaScale: Math.min(1 + (n * 0.05), 1.5), // La arena crece hasta un 50%
+    orbs: 5 + Math.floor(n * 2.5),
+    // Exponencial con límite asintótico para enemigos para no saturar memoria
+    enemies: Math.min(Math.floor(2 + Math.pow(n, 1.2)), 30), 
+    platforms: 4 + Math.floor(n * 2.5),
+    // Velocidad asintótica máxima (empieza en 4.5, cap en ~18)
+    enemySpeed: CONFIG.enemy.speed + (12 * (1 - Math.exp(-n * 0.1))), 
+    arenaScale: Math.min(1 + (n * 0.08), 2.5), // La arena crece hasta un 250%
   }),
 };
