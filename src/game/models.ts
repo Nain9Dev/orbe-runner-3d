@@ -118,52 +118,35 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
   ring.castShadow = true;
   body.add(ring);
 
-  /* 4. Cara (no rueda) ----------------------------------------------------- */
+  /* 4. Cara (Visor Cibernético) -------------------------------------------- */
   const face = new THREE.Group();
   body.add(face);
 
-  const eyeWhiteMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, emissive: 0xbccbe8, emissiveIntensity: 0.75, roughness: 0.3,
+  const visorMat = new THREE.MeshStandardMaterial({
+    color: 0x020510, roughness: 0.1, metalness: 0.9, clearcoat: 1
   });
-  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x0a1024, roughness: 0.25 });
-  const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const visor = new THREE.Mesh(
+    new THREE.CylinderGeometry(r * 0.5, r * 0.5, r * 0.35, 24, 1, false, -Math.PI/2.2, Math.PI/1.1),
+    visorMat
+  );
+  visor.rotation.x = Math.PI / 2;
+  visor.position.set(0, r * 0.1, r * 0.65);
+  face.add(visor);
 
-  const eyeGeo = new THREE.SphereGeometry(r * 0.3, 20, 16);
-  const pupilGeo = new THREE.SphereGeometry(r * 0.15, 14, 12);
-  const glintGeo = new THREE.SphereGeometry(r * 0.045, 8, 8);
-
+  // Ojos LED (Pupilas)
+  const pupilMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffffff, emissive: tint.clone(), emissiveIntensity: 3 
+  });
+  const pupilGeo = new THREE.CapsuleGeometry(r * 0.05, r * 0.08, 4, 8);
+  
   const eyes = [];
   for (const side of [-1, 1]) {
-    const eye = new THREE.Mesh(eyeGeo, eyeWhiteMat);
-    eye.position.set(side * r * 0.36, r * 0.28, r * 0.68); // local +Z es "delante"
-    eye.scale.set(1, 1, 0.62);
-
     const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-    pupil.position.set(0, 0, r * 0.22);
-    const glint = new THREE.Mesh(glintGeo, glintMat);
-    glint.position.set(-side * r * 0.05, r * 0.05, r * 0.1);
-    pupil.add(glint);
-    eye.add(pupil);
-
-    face.add(eye);
-    eyes.push({ eye, pupil });
+    pupil.position.set(side * r * 0.2, r * 0.1, r * 1.15);
+    pupil.rotation.z = side * 0.1;
+    face.add(pupil);
+    eyes.push(pupil);
   }
-
-  // Dos bocas que se turnan: sonrisa (por defecto) y "oh" (susto o bostezo).
-  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x0a1024, roughness: 0.4 });
-  const smile = new THREE.Mesh(
-    new THREE.TorusGeometry(r * 0.26, r * 0.05, 8, 22, Math.PI),
-    mouthMat,
-  );
-  smile.position.set(0, -r * 0.14, r * 0.86);
-  smile.rotation.z = Math.PI; // el arco mira hacia arriba: sonrisa
-  face.add(smile);
-
-  const oh = new THREE.Mesh(new THREE.SphereGeometry(r * 0.17, 14, 12), mouthMat);
-  oh.position.set(0, -r * 0.16, r * 0.86);
-  oh.scale.set(0.85, 1, 0.5);
-  oh.visible = false;
-  face.add(oh);
 
   // Mofletes: dos discos suaves que se encienden al celebrar.
   const blushMat = new THREE.MeshBasicMaterial({
@@ -172,15 +155,43 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
   const blushes = [];
   for (const side of [-1, 1]) {
     const blush = new THREE.Mesh(new THREE.CircleGeometry(r * 0.13, 12), blushMat.clone());
-    blush.position.set(side * r * 0.58, r * 0.02, r * 0.68);
+    blush.position.set(side * r * 0.55, -r * 0.05, r * 0.7);
     blush.rotation.y = side * 0.8;
     face.add(blush);
     blushes.push(blush);
   }
 
-  /* 4b. Espalda: respiradero y propulsores -------------------------------- *
-   * La cámara persigue a Orbi por detrás, así que esta es la cara que más se
-   * ve mientras se juega: aquí es donde tiene que pasar algo.                */
+  /* 4b. Orejas / Alerones Aerodinámicos ------------------------------------ */
+  const ears = [];
+  const earMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.5, roughness: 0.2 });
+  const earGeo = new THREE.ConeGeometry(r * 0.15, r * 0.6, 4);
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Group();
+    ear.position.set(side * r * 0.8, r * 0.2, 0);
+    
+    const mesh = new THREE.Mesh(earGeo, earMat);
+    mesh.rotation.z = side * -Math.PI / 2.5; // apuntan hacia afuera
+    mesh.position.x = side * r * 0.2;
+    ear.add(mesh);
+    
+    body.add(ear);
+    ears.push({ group: ear, side, baseRotZ: ear.rotation.z });
+  }
+
+  /* 4c. Manos de Energía Flotantes ----------------------------------------- */
+  const hands = [];
+  const handMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, emissive: tint.clone(), emissiveIntensity: 2, transparent: true, opacity: 0.8
+  });
+  const handGeo = new THREE.SphereGeometry(r * 0.2, 12, 12);
+  for (const side of [-1, 1]) {
+    const hand = new THREE.Mesh(handGeo, handMat);
+    hand.position.set(side * r * 1.1, -r * 0.2, r * 0.3);
+    body.add(hand);
+    hands.push({ mesh: hand, side, baseY: hand.position.y });
+  }
+
+  /* 4d. Espalda: Respiradero y propulsores --------------------------------- */
   const back = new THREE.Group();
   body.add(back);
 
@@ -348,38 +359,38 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
       bulbMat.emissive.setHex(scared ? 0xff5470 : 0xffd166);
       bulbMat.emissiveIntensity = scared ? 2.6 + Math.sin(t * 20) * 1.2 : 2 + Math.sin(t * 2.5) * 0.4;
 
-      /* Mirada: las pupilas siguen al objetivo que le pasa el sistema. */
+      /* Mirada: las pupilas se deslizan por el visor. */
       lookX = damp(lookX, clamp(s.lookX ?? 0, -1, 1), 9, dt);
       lookY = damp(lookY, clamp(s.lookY ?? 0, -1, 1), 9, dt);
-      for (const { pupil } of eyes) {
-        pupil.position.set(lookX * r * 0.09, lookY * r * 0.07, r * 0.2);
+      
+      const eyeScale = scared ? 1.4 : cheer > 0 ? 0.7 : 1;
+      for (let i = 0; i < eyes.length; i++) {
+        const pupil = eyes[i];
+        const side = i === 0 ? -1 : 1;
+        pupil.position.set(side * r * 0.2 + lookX * r * 0.15, r * 0.1 + lookY * r * 0.08, r * 1.15);
+        pupil.scale.setScalar(damp(pupil.scale.x, eyeScale, 12, dt));
+        pupil.material.emissiveIntensity = scared ? 5 + Math.sin(t*20)*2 : 3;
+        if (dizzy > 0) pupil.rotation.z += dt * 5 * side; // ojos locos
       }
 
-      /* Parpadeo, susto, euforia y bostezo se reparten el tamaño del ojo. */
-      blinkIn -= dt;
-      if (blinkIn <= 0 && blinkPhase < 0) { blinkPhase = 0; blinkIn = 2 + Math.random() * 4; }
-      let lid = 1;
-      if (blinkPhase >= 0) {
-        blinkPhase += dt;
-        lid = blinkPhase < 0.07 ? 1 - blinkPhase / 0.07 : (blinkPhase - 0.07) / 0.07;
-        if (blinkPhase > 0.14) { blinkPhase = -1; lid = 1; }
-      }
-      yawn = idle > 7 ? Math.min(1, yawn + dt * 2) : Math.max(0, yawn - dt * 3);
-      if (idle > 11) idle = 0;
-
-      const eyeScale = scared ? 1.25 : cheer > 0 ? 0.75 : 1;
-      for (const { eye, pupil } of eyes) {
-        eye.scale.y = Math.max(0.06, lid * eyeScale * (1 - yawn * 0.9));
-        eye.scale.x = eyeScale;
-        pupil.scale.setScalar(scared ? 0.65 : cheer > 0 ? 1.15 : 1);
+      /* Orejas: reaccionan a la velocidad y a los saltos. */
+      for (const ear of ears) {
+        // Se pegan a la cabeza al correr, y aletean al saltar o celebrar
+        const targetRot = ear.baseRotZ + ear.side * (speed * 0.04 - squash * 0.8 + (cheer > 0 ? Math.sin(t * 15) * 0.2 : 0));
+        ear.group.rotation.z = damp(ear.group.rotation.z, targetRot, 12, dt);
+        // Se inclinan hacia delante al acelerar
+        ear.group.rotation.x = damp(ear.group.rotation.x, lean * 1.5, 10, dt);
       }
 
-      /* Boca: sonrisa por defecto, "oh" al asustarse o bostezar. */
-      const openMouth = scared || yawn > 0.4 || dizzy > 0.4;
-      smile.visible = !openMouth;
-      oh.visible = openMouth;
-      oh.scale.set(0.85 + yawn * 0.5, 1 + yawn * 1.4, 0.5);
-      smile.scale.setScalar(cheer > 0 ? 1.35 : 1);
+      /* Manos de Energía: siguen el salto y se alzan al celebrar. */
+      for (const hand of hands) {
+        const joy = cheer > 0 ? r * 0.6 + Math.sin(t * 12 + hand.side) * 0.1 : 0;
+        const drag = -squash * r * 0.8; 
+        const targetY = hand.baseY + joy + drag;
+        hand.mesh.position.y = damp(hand.mesh.position.y, targetY, 15, dt);
+        hand.mesh.scale.setScalar(cheer > 0 ? 1.3 : 1);
+        hand.mesh.material.opacity = 0.6 + beat * 0.2 + (cheer > 0 ? 0.4 : 0);
+      }
 
       /* Mofletes encendidos mientras celebra. */
       const blushAlpha = cheer > 0 ? 0.55 : 0;
