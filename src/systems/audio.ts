@@ -96,6 +96,44 @@ export function audioSystem() {
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.3);
       });
+
+      world.events.on('player:damaged', ({ player }) => {
+        if (!ctx || !masterGain) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        if (player.player.lives <= 0) {
+          // Death sound (caída de graves y distorsión implícita por onda de sierra fuerte)
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 1.2);
+          
+          osc.connect(gain);
+          gain.connect(masterGain);
+          
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+          
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 1.2);
+        } else {
+          // Hit sound (ruido corto de onda cuadrada)
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(200, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
+          
+          osc.connect(gain);
+          gain.connect(masterGain);
+          
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+          
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.3);
+        }
+      });
     },
 
     update() {

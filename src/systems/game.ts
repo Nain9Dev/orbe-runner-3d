@@ -27,7 +27,7 @@ export function gameSystem() {
         }
       });
 
-      world.events.on('player:hit', ({ player }) => damage(world, player));
+      world.events.on('player:hit', ({ player, source }) => damage(world, player, source));
 
       world.events.on('body:fell', (entity) => {
         if (entity.player) damage(world, entity);
@@ -54,12 +54,13 @@ export function gameSystem() {
   };
 }
 
-function damage(world, player) {
+function damage(world, player, source = null) {
   if (world.state.status !== 'playing' || player.player.invulnerable > 0) return;
 
   const hitAt = player.transform.position.clone(); // antes de reaparecer
-  player.player.lives -= 1;
-  world.state.lives = player.player.lives;
+  const dmg = source?.hazard?.damage ?? 1;
+  player.player.lives -= dmg;
+  world.state.lives = Math.max(0, player.player.lives);
   player.player.invulnerable = CONFIG.player.respawnInvuln;
   player.transform.position.copy(player.player.spawn);
   player.body.velocity.set(0, 0, 0);

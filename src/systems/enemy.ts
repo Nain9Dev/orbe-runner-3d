@@ -25,7 +25,7 @@ export function enemySystem() {
         const pos = e.transform.position;
         let speed = e.enemy.speed;
 
-        if (player && pos.distanceTo(player.transform.position) < CONFIG.enemy.aggroRange) {
+        if (player && pos.distanceTo(player.transform.position) < (e.enemy.aggroRange || 16)) {
           dir.subVectors(player.transform.position, pos);
         } else {
           // Patrulla: vuelve a su zona y da vueltas alrededor.

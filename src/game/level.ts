@@ -101,7 +101,16 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     do {
       position = new THREE.Vector3(range(-half + 3, half - 3), 1.5, range(-half + 3, half - 3));
     } while (position.length() < 14);
-    spawn(world, 'enemy', { position, speed: spec.enemySpeed });
+
+    let type = 'tracker';
+    if (n >= 5) {
+      const rand = random();
+      type = rand < 0.2 ? 'tank' : rand < 0.6 ? 'stalker' : 'tracker';
+    } else if (n >= 3) {
+      type = random() < 0.4 ? 'stalker' : 'tracker';
+    }
+
+    spawn(world, 'enemy', { position, speed: spec.enemySpeed, type });
   }
 
   const player = spawn(world, 'player', { position: new THREE.Vector3(0, 2, 0) });

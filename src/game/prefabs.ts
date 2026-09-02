@@ -71,15 +71,31 @@ definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
   };
 });
 
-definePrefab('enemy', ({ position = v3(), speed = CONFIG.enemy.speed } = {}) => {
-  const r = CONFIG.enemy.radius;
-  const hunter = createHunter({ radius: r });
+definePrefab('enemy', ({ position = v3(), speed = CONFIG.enemy.speed, type = 'tracker' } = {}) => {
+  let r = CONFIG.enemy.radius;
+  let spd = speed;
+  let damage = 1;
+  let aggroRange = CONFIG.enemy.aggroRange;
+
+  if (type === 'stalker') {
+    r = 0.5;
+    spd = speed * 1.6;
+    damage = 1;
+    aggroRange = 10;
+  } else if (type === 'tank') {
+    r = 1.3;
+    spd = speed * 0.5;
+    damage = 2;
+    aggroRange = 25;
+  }
+
+  const hunter = createHunter({ radius: r, type });
   return {
     tag: 'enemy',
     transform: { position: position.clone(), yaw: 0 },
     body: { velocity: v3(), radius: r, grounded: false },
-    enemy: { speed, home: position.clone(), wander: v3() },
-    hazard: { radius: r + 0.2 },
+    enemy: { type, speed: spd, aggroRange, home: position.clone(), wander: v3() },
+    hazard: { radius: r + 0.2, damage },
     avatar: { api: hunter },
     render: { mesh: hunter.group },
   };

@@ -417,36 +417,54 @@ const once = (key, make) => (cache[key] ??= make());
  * Lo contrario de Orbi a propósito: un solo ojo en vez de dos, ángulos en vez
  * de curvas, rojo en vez de cian y púas que se abren cuando te ha visto.
  * ------------------------------------------------------------------------- */
-export function createHunter({ radius: r = 0.7 } = {}) {
+export function createHunter({ radius: r = 0.7, type = 'tracker' } = {}) {
   const group = new THREE.Group();
   const body = new THREE.Group();
   group.add(body);
 
-  const hullMat = once('hunterHull', () => new THREE.MeshStandardMaterial({
-    color: 0x37101f,
-    emissive: new THREE.Color(0x8e1230),
+  let color = 0x37101f;
+  let emissive = 0x8e1230;
+  let spikeColor = 0xd83f5e;
+  let auraColor = 0xff3b5c;
+
+  if (type === 'stalker') {
+    color = 0x100522;
+    emissive = 0x4a128e;
+    spikeColor = 0x983fd8;
+    auraColor = 0xaa3bff;
+  } else if (type === 'tank') {
+    color = 0x1a0505;
+    emissive = 0x400202;
+    spikeColor = 0xaa1111;
+    auraColor = 0xff1111;
+  }
+
+  const hullMat = once(`hunterHull_${type}`, () => new THREE.MeshStandardMaterial({
+    color,
+    emissive: new THREE.Color(emissive),
     emissiveIntensity: 0.55,
     roughness: 0.55,
     metalness: 0.35,
     flatShading: true,
   }));
   const hull = new THREE.Mesh(
-    once('hunterHullGeo', () => new THREE.IcosahedronGeometry(r * 0.78, 1)),
+    once(`hunterHullGeo_${type}`, () => new THREE.IcosahedronGeometry(r * 0.78, 1)),
     hullMat,
   );
   hull.castShadow = true;
   body.add(hull);
 
   // Púas: se abren cuando persigue, se pegan al cuerpo cuando patrulla.
-  const spikeGeo = once('hunterSpikeGeo', () => new THREE.ConeGeometry(r * 0.13, r * 0.42, 5));
-  const spikeMat = once('hunterSpikeMat', () => new THREE.MeshStandardMaterial({
-    color: 0xd83f5e, roughness: 0.35, metalness: 0.7, flatShading: true,
+  const spikeGeo = once(`hunterSpikeGeo_${type}`, () => new THREE.ConeGeometry(r * 0.13, r * (type === 'tank' ? 0.6 : 0.42), 5));
+  const spikeMat = once(`hunterSpikeMat_${type}`, () => new THREE.MeshStandardMaterial({
+    color: spikeColor, roughness: 0.35, metalness: 0.7, flatShading: true,
   }));
   const spikes = new THREE.Group();
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < (type === 'tank' ? 12 : 7); i++) {
     const spike = new THREE.Mesh(spikeGeo, spikeMat);
     // Repartidas por la esfera con la espiral de Fibonacci: nada de retícula.
-    const y = 1 - (i / 6) * 1.7;
+    const numSpikes = type === 'tank' ? 12 : 7;
+    const y = 1 - (i / (numSpikes - 1)) * 1.7;
     const rad = Math.sqrt(Math.max(0, 1 - y * y));
     const theta = i * 2.399;
     const dir = new THREE.Vector3(Math.cos(theta) * rad, y, Math.sin(theta) * rad).normalize();
@@ -463,17 +481,17 @@ export function createHunter({ radius: r = 0.7 } = {}) {
   body.add(eye);
 
   const sclera = new THREE.Mesh(
-    once('hunterEyeGeo', () => new THREE.SphereGeometry(r * 0.44, 18, 14)),
-    once('hunterEyeMat', () => new THREE.MeshStandardMaterial({
+    once(`hunterEyeGeo_${type}`, () => new THREE.SphereGeometry(r * 0.44, 18, 14)),
+    once(`hunterEyeMat_${type}`, () => new THREE.MeshStandardMaterial({
       color: 0xffe4e9, emissive: 0x552028, emissiveIntensity: 0.5, roughness: 0.25,
     })),
   );
   eye.add(sclera);
 
   const iris = new THREE.Mesh(
-    once('hunterIrisGeo', () => new THREE.SphereGeometry(r * 0.25, 16, 12)),
-    once('hunterIrisMat', () => new THREE.MeshStandardMaterial({
-      color: 0x120308, emissive: new THREE.Color(0xff2d55), emissiveIntensity: 1.6, roughness: 0.2,
+    once(`hunterIrisGeo_${type}`, () => new THREE.SphereGeometry(r * 0.25, 16, 12)),
+    once(`hunterIrisMat_${type}`, () => new THREE.MeshStandardMaterial({
+      color: 0x120308, emissive: new THREE.Color(type === 'stalker' ? 0xff2dcf : 0xff2d55), emissiveIntensity: 1.6, roughness: 0.2,
     })),
   );
   iris.position.z = r * 0.28;
@@ -483,13 +501,13 @@ export function createHunter({ radius: r = 0.7 } = {}) {
   // Aura: delata a distancia que eso te está buscando.
   const aura = new THREE.Sprite(new THREE.SpriteMaterial({
     map: glowTexture(),
-    color: 0xff3b5c,
+    color: auraColor,
     transparent: true,
     opacity: 0.35,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  aura.scale.setScalar(r * 4);
+  aura.scale.setScalar(r * (type === 'tank' ? 4.5 : 4));
   body.add(aura);
 
   const phase = Math.random() * TAU;
@@ -503,11 +521,13 @@ export function createHunter({ radius: r = 0.7 } = {}) {
       t += dt;
       const speed = s.speed ?? 0;
       const dist = s.threat ?? Infinity;      // distancia al jugador
-      aggro = damp(aggro, dist < 16 ? 1 : 0, 3, dt);
+      const aggroRange = type === 'stalker' ? 10 : type === 'tank' ? 25 : 16;
+      aggro = damp(aggro, dist < aggroRange ? 1 : 0, 3, dt);
 
       // Flota y cabecea; cuanto más cerca está de ti, más nervioso.
-      const nerves = clamp(1 - dist / 10, 0, 1);
-      body.position.y = Math.sin(t * 2.4 + phase) * 0.09 + nerves * Math.sin(t * 30) * 0.03;
+      const nerves = clamp(1 - dist / (aggroRange * 0.6), 0, 1);
+      const bobFreq = type === 'stalker' ? 4.0 : type === 'tank' ? 1.2 : 2.4;
+      body.position.y = Math.sin(t * bobFreq + phase) * 0.09 + nerves * Math.sin(t * 30) * 0.03;
       body.rotation.x = clamp(speed * 0.03, 0, 0.35) + Math.sin(t * 1.9 + phase) * 0.05;
       body.rotation.z = Math.sin(t * 1.3 + phase) * 0.08 + nerves * Math.cos(t * 27) * 0.04;
 
@@ -522,7 +542,7 @@ export function createHunter({ radius: r = 0.7 } = {}) {
       iris.scale.setScalar(1 - nerves * 0.25); // pupila que se cierra al acercarse
 
       aura.material.opacity = 0.18 + aggro * 0.3 + Math.sin(t * 6 + phase) * 0.05;
-      aura.scale.setScalar(r * (3.6 + aggro * 1.1));
+      aura.scale.setScalar(r * (type === 'tank' ? 4.1 : 3.6) + aggro * 1.1);
     },
   };
 }
