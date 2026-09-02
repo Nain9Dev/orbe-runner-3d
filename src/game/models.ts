@@ -173,7 +173,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
 
   // Ojos LED (Pupilas)
   const pupilMat = new THREE.MeshStandardMaterial({ 
-    color: 0xffffff, emissive: tint.clone(), emissiveIntensity: 3 
+    color: 0xffffff, emissive: tint.clone(), emissiveIntensity: 1.5 
   });
   const pupilGeo = new THREE.CapsuleGeometry(r * 0.05, r * 0.08, 4, 8);
   
@@ -659,7 +659,7 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
   const irisBaseColor = type === 'stalker' ? 0xff2dcf : 0xff2d55;
   const irisFinalColor = tier >= 3 ? 0xff0000 : irisBaseColor;
   const irisMat = once(`hunterIrisMat_${type}_${tier}`, () => new THREE.MeshStandardMaterial({
-    color: 0x120308, emissive: new THREE.Color(irisFinalColor), emissiveIntensity: 1.6 + tier * 0.5, roughness: 0.2,
+    color: 0x120308, emissive: new THREE.Color(irisFinalColor), emissiveIntensity: 0.8 + tier * 0.5, roughness: 0.2,
   }));
 
   const numEyes = type === 'stalker' ? 3 : 1;
@@ -745,7 +745,7 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
     once('orbGemMat', () => new THREE.MeshStandardMaterial({
       color: 0xffe6a3,
       emissive: new THREE.Color(0xffb020),
-      emissiveIntensity: 1.5,
+      emissiveIntensity: 0.8,
       roughness: 0.2,
       metalness: 0.3,
       flatShading: true,

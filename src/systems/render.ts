@@ -66,7 +66,7 @@ export function renderSystem(canvas) {
   const pmrem = new THREE.PMREMGenerator(renderer);
 
   // Luces: una direccional con sombras + ambiente de relleno.
-  const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
   sun.position.set(18, 30, 12);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -77,7 +77,7 @@ export function renderSystem(canvas) {
   sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun);
   
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.5);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.3);
   scene.add(hemi);
 
   function applyPalette(tier) {
@@ -103,7 +103,7 @@ export function renderSystem(canvas) {
   scene.add(grid);
 
   // Contraluz frío: recorta las siluetas contra el fondo.
-  const rim = new THREE.DirectionalLight(0x7fb0ff, 1.1);
+  const rim = new THREE.DirectionalLight(0x7fb0ff, 0.6);
   rim.position.set(-14, 9, -16);
   scene.add(rim);
   
