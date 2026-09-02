@@ -50,25 +50,36 @@ export class Input {
 
     if (!leftZone || !rightZone || !jumpBtn || !joyBase || !joyStick) return;
 
-    // Salto
+    // Salto garantizado por tiempo
+    const triggerJump = () => {
+      this.virtualKeys.add('Space');
+      // Aseguramos al menos 50ms para que el loop (a 60fps) no se lo salte nunca
+      setTimeout(() => this.virtualKeys.delete('Space'), 50);
+    };
+
+    // Botón de Salto explícito
     this._bind(jumpBtn, 'touchstart', (e: TouchEvent) => {
       e.preventDefault();
-      this.virtualKeys.add('Space');
-    }, { passive: false });
-    this._bind(jumpBtn, 'touchend', (e: TouchEvent) => {
-      e.preventDefault();
-      this.virtualKeys.delete('Space');
+      triggerJump();
     }, { passive: false });
 
-    // Cámara (Derecha)
-    let lastCamTouch: { id: number, x: number, y: number } | null = null;
+    // Cámara (Derecha) y Salto por "Quick Tap"
+    let lastCamTouch: { id: number, x: number, y: number, startX: number, startY: number, time: number } | null = null;
     this._bind(rightZone, 'touchstart', (e: TouchEvent) => {
       e.preventDefault(); // Evita scroll y gestos
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
-        if (!lastCamTouch) lastCamTouch = { id: t.identifier, x: t.clientX, y: t.clientY };
+        if (!lastCamTouch) {
+          lastCamTouch = { 
+            id: t.identifier, 
+            x: t.clientX, y: t.clientY, 
+            startX: t.clientX, startY: t.clientY, 
+            time: Date.now() 
+          };
+        }
       }
     }, { passive: false });
+    
     this._bind(rightZone, 'touchmove', (e: TouchEvent) => {
       e.preventDefault();
       if (!lastCamTouch) return;
@@ -85,10 +96,23 @@ export class Input {
         }
       }
     }, { passive: false });
+    
     const endCam = (e: TouchEvent) => {
       if (!lastCamTouch) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === lastCamTouch.id) lastCamTouch = null;
+        if (e.changedTouches[i].identifier === lastCamTouch.id) {
+          // Evaluar "Quick Tap"
+          const duration = Date.now() - lastCamTouch.time;
+          const dist = Math.hypot(lastCamTouch.x - lastCamTouch.startX, lastCamTouch.y - lastCamTouch.startY);
+          
+          if (duration < 300 && dist < 10) {
+            triggerJump();
+            rightZone.classList.add('tap-active');
+            setTimeout(() => rightZone.classList.remove('tap-active'), 100);
+          }
+          
+          lastCamTouch = null;
+        }
       }
     };
     this._bind(rightZone, 'touchend', endCam);
@@ -177,9 +201,9 @@ export class Input {
     this._target.requestPointerLock?.();
   }
 
-  _bind(el, type, fn) {
-    el.addEventListener(type, fn);
-    this._handlers.push(() => el.removeEventListener(type, fn));
+  _bind(el: any, type: string, fn: any, options?: any) {
+    el.addEventListener(type, fn, options);
+    this._handlers.push(() => el.removeEventListener(type, fn, options));
   }
 
   dispose() {

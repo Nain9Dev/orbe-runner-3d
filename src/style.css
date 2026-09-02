@@ -296,25 +296,31 @@ html, body {
   position: absolute;
   bottom: 40px;
   right: 40px;
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(5, 217, 232, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  border: 3px solid rgba(5, 217, 232, 0.6);
   color: #fff;
   font-family: 'Inter', sans-serif;
-  font-weight: 800;
-  font-size: 14px;
+  font-size: 36px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 0 15px rgba(5, 217, 232, 0.2);
+  box-shadow: 0 0 20px rgba(5, 217, 232, 0.3);
   user-select: none;
   -webkit-user-select: none;
+  z-index: 20;
 }
 
 #touch-jump-btn:active {
-  background: rgba(5, 217, 232, 0.4);
-  transform: scale(0.95);
+  background: rgba(5, 217, 232, 0.5);
+  transform: scale(0.92);
+}
+
+#touch-right-zone.tap-active {
+  background: radial-gradient(circle at center, rgba(5, 217, 232, 0.15) 0%, transparent 60%);
 }
 
 @media (pointer: coarse) {
