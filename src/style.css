@@ -248,3 +248,77 @@ html, body {
 .hidden {
   display: none !important;
 }
+
+/* Touch Controls */
+#touch-controls {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  pointer-events: none;
+  display: none;
+}
+
+#touch-left-zone, #touch-right-zone {
+  width: 50%;
+  height: 100%;
+  pointer-events: auto;
+  position: relative;
+}
+
+#touch-joystick-base {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(5, 217, 232, 0.4);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 15px rgba(5, 217, 232, 0.2);
+}
+
+#touch-joystick-stick {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: rgba(5, 217, 232, 0.6);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(5, 217, 232, 0.8);
+}
+
+#touch-jump-btn {
+  position: absolute;
+  bottom: 40px;
+  right: 40px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(5, 217, 232, 0.4);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0 15px rgba(5, 217, 232, 0.2);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#touch-jump-btn:active {
+  background: rgba(5, 217, 232, 0.4);
+  transform: scale(0.95);
+}
+
+@media (pointer: coarse) {
+  #touch-controls:not(.hidden) {
+    display: flex;
+  }
+}

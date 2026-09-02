@@ -6,32 +6,163 @@
  * rellena un mando, una IA o una repetición grabada.
  */
 export class Input {
+  keys: Set<string>;
+  virtualKeys: Set<string>;
+  mouse: { dx: number; dy: number; locked: boolean };
+  _target: any;
+  _handlers: Array<() => void>;
+
   constructor(target = window) {
     this.keys = new Set();
+    this.virtualKeys = new Set();
     this.mouse = { dx: 0, dy: 0, locked: false };
     this._target = target;
     this._handlers = [];
 
-    this._bind(window, 'keydown', (e) => {
+    this._bind(window, 'keydown', (e: KeyboardEvent) => {
       this.keys.add(e.code);
       if (e.code === 'Space') e.preventDefault(); // evita el scroll de la página
     });
-    this._bind(window, 'keyup', (e) => this.keys.delete(e.code));
-    this._bind(window, 'blur', () => this.keys.clear());
+    this._bind(window, 'keyup', (e: KeyboardEvent) => this.keys.delete(e.code));
+    this._bind(window, 'blur', () => {
+      this.keys.clear();
+      this.virtualKeys.clear();
+    });
 
     this._bind(document, 'pointerlockchange', () => {
       this.mouse.locked = document.pointerLockElement === this._target;
     });
-    this._bind(window, 'mousemove', (e) => {
+    this._bind(window, 'mousemove', (e: MouseEvent) => {
       if (!this.mouse.locked) return;
       this.mouse.dx += e.movementX;
       this.mouse.dy += e.movementY;
     });
+
+    this._setupTouchControls();
+  }
+
+  private _setupTouchControls() {
+    const leftZone = document.getElementById('touch-left-zone');
+    const rightZone = document.getElementById('touch-right-zone');
+    const jumpBtn = document.getElementById('touch-jump-btn');
+    const joyBase = document.getElementById('touch-joystick-base');
+    const joyStick = document.getElementById('touch-joystick-stick');
+
+    if (!leftZone || !rightZone || !jumpBtn || !joyBase || !joyStick) return;
+
+    // Salto
+    this._bind(jumpBtn, 'touchstart', (e: TouchEvent) => {
+      e.preventDefault();
+      this.virtualKeys.add('Space');
+    }, { passive: false });
+    this._bind(jumpBtn, 'touchend', (e: TouchEvent) => {
+      e.preventDefault();
+      this.virtualKeys.delete('Space');
+    }, { passive: false });
+
+    // Cámara (Derecha)
+    let lastCamTouch: { id: number, x: number, y: number } | null = null;
+    this._bind(rightZone, 'touchstart', (e: TouchEvent) => {
+      e.preventDefault(); // Evita scroll y gestos
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (!lastCamTouch) lastCamTouch = { id: t.identifier, x: t.clientX, y: t.clientY };
+      }
+    }, { passive: false });
+    this._bind(rightZone, 'touchmove', (e: TouchEvent) => {
+      e.preventDefault();
+      if (!lastCamTouch) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === lastCamTouch.id) {
+          const dx = t.clientX - lastCamTouch.x;
+          const dy = t.clientY - lastCamTouch.y;
+          // Aplicamos factor de sensibilidad táctil a cámara
+          this.mouse.dx += dx * 2.0; 
+          this.mouse.dy += dy * 2.0;
+          lastCamTouch.x = t.clientX;
+          lastCamTouch.y = t.clientY;
+        }
+      }
+    }, { passive: false });
+    const endCam = (e: TouchEvent) => {
+      if (!lastCamTouch) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === lastCamTouch.id) lastCamTouch = null;
+      }
+    };
+    this._bind(rightZone, 'touchend', endCam);
+    this._bind(rightZone, 'touchcancel', endCam);
+
+    // Movimiento (Joystick Izquierdo)
+    let joyId: number | null = null;
+    let origin = { x: 0, y: 0 };
+    const maxRadius = 40; // Pixeles de recorrido máximo del joystick
+
+    const updateVirtualWASD = (dx: number, dy: number) => {
+      this.virtualKeys.delete('KeyW');
+      this.virtualKeys.delete('KeyS');
+      this.virtualKeys.delete('KeyA');
+      this.virtualKeys.delete('KeyD');
+      const threshold = 15;
+      if (dy < -threshold) this.virtualKeys.add('KeyW');
+      if (dy > threshold) this.virtualKeys.add('KeyS');
+      if (dx < -threshold) this.virtualKeys.add('KeyA');
+      if (dx > threshold) this.virtualKeys.add('KeyD');
+    };
+
+    this._bind(leftZone, 'touchstart', (e: TouchEvent) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (joyId === null) {
+          const t = e.changedTouches[i];
+          joyId = t.identifier;
+          origin = { x: t.clientX, y: t.clientY };
+          const rect = leftZone.getBoundingClientRect();
+          joyBase.style.left = `${t.clientX - rect.left}px`;
+          joyBase.style.top = `${t.clientY - rect.top}px`;
+          joyBase.classList.remove('hidden');
+          joyStick.style.transform = `translate(-50%, -50%)`;
+        }
+      }
+    }, { passive: false });
+
+    this._bind(leftZone, 'touchmove', (e: TouchEvent) => {
+      e.preventDefault();
+      if (joyId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joyId) {
+          let dx = t.clientX - origin.x;
+          let dy = t.clientY - origin.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist > maxRadius) {
+            dx = (dx / dist) * maxRadius;
+            dy = (dy / dist) * maxRadius;
+          }
+          joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+          updateVirtualWASD(dx, dy);
+        }
+      }
+    }, { passive: false });
+
+    const endJoy = (e: TouchEvent) => {
+      if (joyId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyId) {
+          joyId = null;
+          joyBase.classList.add('hidden');
+          updateVirtualWASD(0, 0); // reset
+        }
+      }
+    };
+    this._bind(leftZone, 'touchend', endJoy);
+    this._bind(leftZone, 'touchcancel', endJoy);
   }
 
   /** ¿Está pulsada esta tecla? Acepta varios códigos (OR). */
-  down(...codes) {
-    return codes.some((code) => this.keys.has(code));
+  down(...codes: string[]) {
+    return codes.some((code) => this.keys.has(code) || this.virtualKeys.has(code));
   }
 
   /** Consume el movimiento de ratón acumulado desde la última llamada. */

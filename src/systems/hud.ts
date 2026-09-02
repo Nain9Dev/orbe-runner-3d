@@ -15,6 +15,7 @@ export function hudSystem(engine, input) {
     title: document.getElementById('overlay-title'),
     text: document.getElementById('overlay-text'),
     button: document.getElementById('start'),
+    touchControls: document.getElementById('touch-controls'),
   };
 
   return {
@@ -109,9 +110,13 @@ export function hudSystem(engine, input) {
         el.overlay.classList.remove('hidden');
         mainContent.classList.remove('hidden');
         settingsPanel.classList.add('hidden');
+        el.touchControls?.classList.add('hidden');
       });
 
-      world.events.on('ui:hide', () => el.overlay.classList.add('hidden'));
+      world.events.on('ui:hide', () => {
+        el.overlay.classList.add('hidden');
+        el.touchControls?.classList.remove('hidden');
+      });
     },
 
     render(world) {

@@ -23,6 +23,18 @@
 <body>
   <canvas id="game"></canvas>
 
+  <!-- Controles Táctiles (solo móviles) -->
+  <div id="touch-controls" class="hidden">
+    <div id="touch-left-zone">
+      <div id="touch-joystick-base" class="hidden">
+        <div id="touch-joystick-stick"></div>
+      </div>
+    </div>
+    <div id="touch-right-zone">
+      <button id="touch-jump-btn">SALTO</button>
+    </div>
+  </div>
+
   <!-- HUD: capa DOM independiente del render 3D -->
   <div id="hud">
     <div class="hud-row">

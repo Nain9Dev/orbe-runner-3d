@@ -18,11 +18,23 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2305d9e8'/></svg>" />
 
   <!-- Elimina el import map, Vite resuelve three -->
-  <script type="module" crossorigin src="./assets/index-CSv7kmqV.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-C6uvovOQ.css">
+  <script type="module" crossorigin src="./assets/index-D8BqfMkm.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DF13Y2ip.css">
 </head>
 <body>
   <canvas id="game"></canvas>
+
+  <!-- Controles Táctiles (solo móviles) -->
+  <div id="touch-controls" class="hidden">
+    <div id="touch-left-zone">
+      <div id="touch-joystick-base" class="hidden">
+        <div id="touch-joystick-stick"></div>
+      </div>
+    </div>
+    <div id="touch-right-zone">
+      <button id="touch-jump-btn">SALTO</button>
+    </div>
+  </div>
 
   <!-- HUD: capa DOM independiente del render 3D -->
   <div id="hud">
