@@ -885,3 +885,111 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
     },
   };
 }
+
+/**
+ * ALIADO — Dron acompañante
+ * Flota al lado del jugador y dispara láseres defensivos.
+ */
+export function createDrone({ radius: r = 0.3 } = {}) {
+  const group = new THREE.Group();
+  const body = new THREE.Group();
+  group.add(body);
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x99ccff,
+    emissive: 0x0088ff,
+    emissiveIntensity: 0.8,
+    metalness: 0.9,
+    roughness: 0.2,
+    flatShading: true,
+  });
+  
+  const geo = new THREE.OctahedronGeometry(r, 0);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  body.add(mesh);
+
+  const ringGeo = new THREE.TorusGeometry(r * 1.5, r * 0.1, 4, 16);
+  const ringMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, emissive: 0x00ffff, emissiveIntensity: 1.0,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 2;
+  body.add(ring);
+
+  const phase = Math.random() * TAU;
+  let t = 0;
+  
+  return {
+    group,
+    update(dt, s = {}) {
+      t += dt;
+      mesh.rotation.y += dt * 2.0;
+      mesh.rotation.x = Math.sin(t * 3.0) * 0.2;
+      ring.rotation.z -= dt * 1.5;
+      
+      body.position.y = Math.sin(t * 4.0 + phase) * 0.2;
+    }
+  };
+}
+
+/**
+ * ENEMIGO — Interceptor
+ * Muy rápido, ataca en línea recta en lugar de perseguir lentamente.
+ */
+export function createInterceptor({ radius: r = 0.5 } = {}) {
+  const group = new THREE.Group();
+  const body = new THREE.Group();
+  group.add(body);
+
+  // Forma de flecha (tetraedro apuntando hacia adelante)
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x220505,
+    metalness: 0.8,
+    roughness: 0.3,
+    flatShading: true,
+  });
+  const geo = new THREE.TetrahedronGeometry(r * 1.2, 0);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = Math.PI / 4;
+  mesh.rotation.z = Math.PI / 4;
+  mesh.castShadow = true;
+  body.add(mesh);
+
+  // Ojo rojo central
+  const eye = new THREE.Mesh(
+    new THREE.SphereGeometry(r * 0.3, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffaaaa, emissive: 0xffaa00, emissiveIntensity: 1.0 })
+  );
+  eye.position.set(0, 0, r * 0.6);
+  body.add(eye);
+
+  const aura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0xff8800,
+    transparent: true,
+    opacity: 0.15,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  aura.scale.setScalar(r * 2.5);
+  body.add(aura);
+
+  const phase = Math.random() * TAU;
+  let t = 0;
+
+  return {
+    group,
+    update(dt, s = {}) {
+      t += dt;
+      // Gira sobre su eje longitudinal al atacar
+      const speed = s.speed ?? 0;
+      mesh.rotation.y += dt * (1.0 + speed * 2.0);
+      body.position.y = Math.sin(t * 6.0 + phase) * 0.1;
+      
+      const pulse = Math.sin(t * 8.0);
+      aura.scale.setScalar(r * (2.5 + pulse * 0.2));
+      aura.material.opacity = 0.15 + pulse * 0.05;
+    }
+  };
+}

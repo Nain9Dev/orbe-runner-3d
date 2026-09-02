@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { createOrbi, createHunter, createOrbGem, createPowerupIcon } from './models.js';
+import { createOrbi, createHunter, createOrbGem, createPowerupIcon, createDrone, createInterceptor } from './models.js';
 
 /**
  * Registro de prefabs: nombre -> función que devuelve componentes.
@@ -33,11 +33,48 @@ const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
 };
 
+/** Textura de ruido procedural para dar rugosidad y detalle sin imágenes externas. */
+let NOISE_TEXTURE = null;
+function getNoiseTexture() {
+  if (NOISE_TEXTURE) return NOISE_TEXTURE;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(size, size);
+  for (let i = 0; i < imgData.data.length; i += 4) {
+    const val = Math.random() * 255;
+    imgData.data[i] = val;
+    imgData.data[i+1] = val;
+    imgData.data[i+2] = val;
+    imgData.data[i+3] = 255;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  NOISE_TEXTURE = new THREE.CanvasTexture(canvas);
+  NOISE_TEXTURE.wrapS = THREE.RepeatWrapping;
+  NOISE_TEXTURE.wrapT = THREE.RepeatWrapping;
+  return NOISE_TEXTURE;
+}
+
 const MAT = {
-  ground: new THREE.MeshStandardMaterial({ color: 0x01020a, roughness: 0.1, metalness: 0.8 }), // Suelo reflectante
-  platform: new THREE.MeshStandardMaterial({ color: 0x052530, emissive: 0x05d9e8, emissiveIntensity: 0.15, roughness: 0.2, metalness: 0.8 }), // Cyber solid
-  crumbling_platform: new THREE.MeshStandardMaterial({ color: 0x300510, emissive: 0xff2a6d, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.5 }), // Cyber solid
-  wall: new THREE.MeshStandardMaterial({ color: 0x010105, roughness: 0.9, metalness: 0.2 }),
+  ground: new THREE.MeshStandardMaterial({ 
+    color: 0x01020a, roughness: 0.1, metalness: 0.8, 
+    bumpMap: getNoiseTexture(), bumpScale: 0.005 
+  }),
+  platform: new THREE.MeshStandardMaterial({ 
+    color: 0x052530, emissive: 0x05d9e8, emissiveIntensity: 0.15, 
+    roughness: 0.4, metalness: 0.8, 
+    roughnessMap: getNoiseTexture(), bumpMap: getNoiseTexture(), bumpScale: 0.01 
+  }),
+  crumbling_platform: new THREE.MeshStandardMaterial({ 
+    color: 0x300510, emissive: 0xff2a6d, emissiveIntensity: 0.25, 
+    roughness: 0.6, metalness: 0.5,
+    roughnessMap: getNoiseTexture(), bumpMap: getNoiseTexture(), bumpScale: 0.015 
+  }),
+  wall: new THREE.MeshStandardMaterial({ 
+    color: 0x010105, roughness: 0.9, metalness: 0.2,
+    bumpMap: getNoiseTexture(), bumpScale: 0.02
+  }),
 };
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -175,10 +212,21 @@ definePrefab('crumbling_platform', ({ position = v3(), size = v3(5, 1, 5) }) => 
   };
 });
 
-definePrefab('ground', ({ size = CONFIG.world.arenaSize } = {}) => {
-  const box = v3(size, 1, size);
-  const m = mesh(GEO.box, MAT.ground, box);
-  m.castShadow = false;
+definePrefab('moving_platform', ({ position = v3(), size = v3(5, 1, 5), axis = 'x', range = 5, speed = 2 } = {}) => ({
+  tag: 'platform',
+  transform: { position: position.clone(), yaw: 0 },
+  solid: { size: size.clone() },
+  moving: { axis, range, speed, origin: position.clone(), t: Math.random() * Math.PI * 2, dx: 0, dz: 0 },
+  render: { mesh: mesh(GEO.box, MAT.platform, size) },
+}));
+
+definePrefab('ground', ({ size = 200 } = {}) => {
+  const geo = new THREE.PlaneGeometry(size, size);
+  const m = new THREE.Mesh(geo, MAT.ground);
+  m.rotation.x = -Math.PI / 2;
+  m.receiveShadow = true;
+  const box = new THREE.Vector3(size, 1, size);
+  
   return {
     tag: 'ground',
     transform: { position: v3(0, -0.5, 0), yaw: 0 },
@@ -239,5 +287,31 @@ definePrefab('monolith', ({ position = v3(), width = 10, height = 50, depth = 10
     tag: 'monolith',
     transform: { position: position.clone(), yaw: 0 },
     render: { mesh }, // Decorativo puro, sin físicas
+  };
+});
+
+definePrefab('drone', ({ position = v3() } = {}) => {
+  const model = createDrone();
+  return {
+    tag: 'drone',
+    transform: { position: position.clone(), yaw: 0 },
+    velocity: { vec: v3() },
+    ally: { followDist: 2.0, target: null }, // Componente para lógica
+    avatar: { api: model },
+    render: { mesh: model.group },
+  };
+});
+
+definePrefab('interceptor', ({ position = v3() } = {}) => {
+  const model = createInterceptor();
+  return {
+    tag: 'interceptor',
+    transform: { position: position.clone(), yaw: 0 },
+    velocity: { vec: v3() },
+    collider: { radius: 0.5 },
+    hazard: { radius: 0.5, damage: 1, push: 12 },
+    ai: { state: 'idle', target: null, timer: 0 }, // Comportamiento de dash
+    avatar: { api: model },
+    render: { mesh: model.group },
   };
 });

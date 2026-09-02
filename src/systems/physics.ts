@@ -21,6 +21,25 @@ export function physicsSystem() {
       const solids = world.find('solid', 'transform');
       const bodies = world.find('transform', 'body');
 
+      // 0. Update Moving Platforms
+      for (const s of solids) {
+        if (s.moving) {
+          s.moving.t = (s.moving.t || 0) + dt * s.moving.speed;
+          const offset = Math.sin(s.moving.t) * s.moving.range;
+          const oldX = s.transform.position.x;
+          const oldZ = s.transform.position.z;
+          
+          if (s.moving.axis === 'x') {
+            s.transform.position.x = s.moving.origin.x + offset;
+          } else {
+            s.transform.position.z = s.moving.origin.z + offset;
+          }
+          
+          s.moving.dx = s.transform.position.x - oldX;
+          s.moving.dz = s.transform.position.z - oldZ;
+        }
+      }
+
       // 1. Gravedad, Fricción e Integración.
       for (const e of bodies) {
         const { body, transform } = e;
@@ -207,6 +226,12 @@ function resolveSphereBox(bodyEntity, solidEntity) {
     // Si pisamos una plataforma inestable, activar contador
     if (solidEntity.crumbling && solidEntity.crumbling.state === 'idle') {
       solidEntity.crumbling.state = 'crumbling';
+    }
+    
+    // Si pisamos una plataforma móvil, arrastrarnos con ella
+    if (solidEntity.moving) {
+      bodyEntity.transform.position.x += solidEntity.moving.dx;
+      bodyEntity.transform.position.z += solidEntity.moving.dz;
     }
   }
 }

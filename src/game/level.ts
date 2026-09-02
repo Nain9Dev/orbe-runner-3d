@@ -64,50 +64,58 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
 
   // Plataformas: crear "caminos" y parkour.
   const platforms = [];
-  let lastPos = new THREE.Vector3(range(-half + 8, half - 8), range(1.2, 3.0), range(-half + 8, half - 8));
+  let lastPos = new THREE.Vector3(0, 1.2, 0); // Start center
   
-  for (let i = 0; i < spec.platforms; i++) {
-    const w = range(6, 10);
-    const d = range(6, 10);
+  // Set Piece 1: Puente inicial
+  for (let i = 0; i < 5; i++) {
+    const pos = new THREE.Vector3(0, 1.2 + i * 0.2, -6 * i);
+    spawn(world, 'platform', { position: pos, size: new THREE.Vector3(6, 1, 6) });
+    lastPos = pos;
+  }
+
+  // Generate chunks based on spec platforms count
+  for (let i = 0; i < spec.platforms; i += 3) {
+    const r = random();
     
-    let position;
-    // 85% probabilidad de continuar el camino (Parkour)
-    if (i > 0 && random() < 0.85) {
-      // Elegir una dirección dominante (X o Z) para hacer escaleras
-      const dirX = random() < 0.5 ? 1 : -1;
-      const dirZ = random() < 0.5 ? 1 : -1;
-      const isX = random() < 0.5;
+    // Elige un patrón
+    if (r < 0.3 && n >= 2) {
+      // Escaleras en espiral
+      for (let j = 0; j < 4; j++) {
+        const angle = j * Math.PI / 2;
+        const pos = lastPos.clone().add(new THREE.Vector3(Math.cos(angle) * 8, 2 + j * 1.5, Math.sin(angle) * 8));
+        const size = new THREE.Vector3(6, 1, 6);
+        spawn(world, 'platform', { position: pos, size });
+        platforms.push({ position: pos, size, isCrumbling: false });
+        if (j === 3) lastPos = pos;
+      }
+    } else if (r < 0.6 && n >= 3) {
+      // Obstáculo móvil y foso
+      lastPos.y += 1;
+      lastPos.z -= 10;
+      const mSize = new THREE.Vector3(6, 1, 6);
+      spawn(world, 'moving_platform', { position: lastPos.clone(), size: mSize, axis: 'x', range: 8, speed: 2 });
+      platforms.push({ position: lastPos.clone(), size: mSize, isCrumbling: false });
       
-      position = new THREE.Vector3(
-        clamp(lastPos.x + (isX ? range(6, 10) * dirX : range(-3, 3)), -half + 6, half - 6),
-        clamp(lastPos.y + range(1.0, 3.0), 1.2, 8.0), // Pueden subir más alto ahora
-        clamp(lastPos.z + (isX ? range(-3, 3) : range(6, 10) * dirZ), -half + 6, half - 6)
-      );
+      lastPos.z -= 10;
+      spawn(world, 'platform', { position: lastPos.clone(), size: mSize });
+      platforms.push({ position: lastPos.clone(), size: mSize, isCrumbling: false });
     } else {
-      position = new THREE.Vector3(
-        range(-half + 6, half - 6),
-        range(1.2, 3.2),
-        range(-half + 6, half - 6)
-      );
+      // Plataforma colapsable o normal grande
+      lastPos.z -= range(8, 12);
+      lastPos.y += range(-1, 2);
+      lastPos.x += range(-6, 6);
+      const isCrumbling = n >= 3 && random() < 0.4;
+      const size = new THREE.Vector3(8, 1, 8);
+      spawn(world, isCrumbling ? 'crumbling_platform' : 'platform', { position: lastPos.clone(), size });
+      platforms.push({ position: lastPos.clone(), size, isCrumbling });
+      
+      // Si la plataforma es muy alta o por azar, poner un Bounce Pad para ayudar
+      if (!isCrumbling && (lastPos.y > 4.5 || random() < 0.5)) {
+        spawn(world, 'bounce_pad', {
+          position: new THREE.Vector3(lastPos.x, lastPos.y + 0.4, lastPos.z)
+        });
+      }
     }
-    
-    const size = new THREE.Vector3(w, 0.8, d);
-    // 30% de las plataformas a partir del nivel 3 son inestables (excepto la primera)
-    const isCrumbling = i > 0 && n >= 3 && random() < 0.3;
-    const prefabName = isCrumbling ? 'crumbling_platform' : 'platform';
-    
-    spawn(world, prefabName, { position, size });
-    platforms.push({ position, size, isCrumbling });
-    
-    // Si la plataforma es muy alta o por azar, poner un Bounce Pad para ayudar
-    // Las plataformas inestables no llevan bounce pad para aumentar la tensión
-    if (!isCrumbling && i > 0 && (position.y > 4.5 || random() < 0.5)) {
-      spawn(world, 'bounce_pad', {
-        position: new THREE.Vector3(position.x, position.y + 0.4, position.z)
-      });
-    }
-    
-    lastPos = position;
   }
   
   // Zonas de Lava (Muerte instantánea a nivel de suelo)
@@ -148,13 +156,16 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     let type = 'tracker';
     if (n >= 5) {
       const rand = random();
-      // Tanques y torretas son molestos, reducir su probabilidad
       type = rand < 0.05 ? 'tank' : rand < 0.25 ? 'stalker' : rand < 0.35 ? 'turret' : 'tracker';
     } else if (n >= 3) {
       type = random() < 0.3 ? 'stalker' : 'tracker';
     }
 
-    spawn(world, 'enemy', { position, speed: spec.enemySpeed, type });
+    if (random() < 0.2 && n >= 2) {
+      spawn(world, 'interceptor', { position });
+    } else {
+      spawn(world, 'enemy', { position, speed: spec.enemySpeed, type });
+    }
   }
 
   // Jefe (Centinela) cada 5 niveles
@@ -187,6 +198,11 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
       }
       
       spawn(world, 'powerup', { position, type });
+    }
+    
+    // 30% de probabilidad de spawnear un Dron aliado
+    if (random() < 0.3) {
+      spawn(world, 'drone', { position: new THREE.Vector3(0, 2, 0) });
     }
   }
   const player = spawn(world, 'player', { position: new THREE.Vector3(0, 2, 0) });
