@@ -851,7 +851,7 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  halo.scale.setScalar(r * 5);
+  halo.scale.setScalar(r * 2.5);
   group.add(halo);
 
   // Pilar de luz holográfico
@@ -879,7 +879,7 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
       icon.position.y = Math.sin(t * 3.5 + phase) * 0.15;
       
       const pulse = Math.sin(t * 5.0 + phase);
-      halo.scale.setScalar(r * (4.8 + pulse * 0.4));
+      halo.scale.setScalar(r * (2.2 + pulse * 0.3));
       halo.material.opacity = 0.2 + pulse * 0.1;
       pillar.material.opacity = 0.1 + pulse * 0.05;
     },
