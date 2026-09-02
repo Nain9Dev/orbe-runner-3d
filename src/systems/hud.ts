@@ -165,11 +165,58 @@ export function hudSystem(engine, input) {
     },
 
     render(world) {
-      const s = world.state;
-      el.level.textContent = `Nivel ${s.level ?? 1}`;
-      el.score.textContent = `Fragmentos ${s.collected ?? 0}/${s.totalOrbs ?? 0}`;
-      el.lives.textContent = `Vidas ${s.lives ?? 0}`;
-      el.fps.textContent = `${engine.fps} FPS`;
+      el.score.textContent = world.state.collected.toString();
+      el.total.textContent = world.state.totalOrbs.toString();
+      el.level.textContent = 'Nivel ' + world.state.level;
+      if (engine.fps !== undefined) {
+        el.fps.textContent = `${engine.fps} FPS`;
+      }
+      
+      // Sincronizar Pips de Vida
+      const pipsContainer = document.getElementById('health-pips');
+      if (pipsContainer) {
+        // Asegurar que hay suficientes pips en el DOM
+        import('../config.js').then(m => {
+          const maxLives = m.CONFIG.player.lives;
+          const currentLives = world.state.lives;
+          const colorHex = '#' + m.CONFIG.player.color.toString(16).padStart(6, '0');
+
+          while (pipsContainer.children.length < maxLives) {
+            const pip = document.createElement('div');
+            pip.className = 'health-pip';
+            pipsContainer.appendChild(pip);
+          }
+
+          // Actualizar estado (activo/inactivo) y color de los pips
+          for (let i = 0; i < maxLives; i++) {
+            const pip = pipsContainer.children[i] as HTMLElement;
+            if (i < currentLives) {
+              pip.classList.add('active');
+              pip.style.background = colorHex;
+              pip.style.boxShadow = `0 0 8px ${colorHex}`;
+            } else {
+              pip.classList.remove('active');
+              pip.style.background = 'rgba(255, 255, 255, 0.2)';
+              pip.style.boxShadow = 'none';
+            }
+          }
+        });
+      }
+
+      if (world.state.status === 'playing') {
+        el.overlay.classList.add('hidden');
+      } else {
+        el.overlay.classList.remove('hidden');
+        if (world.state.status === 'won') {
+          el.title.textContent = '¡Fragmentos Recuperados!';
+          el.text.textContent = 'Nivel ' + world.state.level + ' completado.';
+          el.button.textContent = 'Siguiente Nivel';
+        } else if (world.state.status === 'lost') {
+          el.title.textContent = 'La luz se ha desvanecido';
+          el.text.textContent = 'Las Sombras te atraparon.';
+          el.button.textContent = 'Reintentar Nivel ' + world.state.level;
+        }
+      }
     },
   };
 }

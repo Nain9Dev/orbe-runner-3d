@@ -60,13 +60,14 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     if (i > 0 && random() < 0.7) {
       position = new THREE.Vector3(
         clamp(lastPos.x + range(-8, 8), -half + 6, half - 6),
-        clamp(lastPos.y + range(-1.5, 2), 1.2, 6.0),
+        clamp(lastPos.y + range(-1.5, 2.3), 1.2, 6.0), // max +2.3 diferencia de salto
         clamp(lastPos.z + range(-8, 8), -half + 6, half - 6)
       );
     } else {
+      // Plataforma desconectada (debe ser alcanzable desde el suelo)
       position = new THREE.Vector3(
         range(-half + 6, half - 6),
-        range(1.2, 4.5),
+        range(1.2, 3.2), // 1.2 es el suelo, max altura saltando desde suelo es 3.7
         range(-half + 6, half - 6)
       );
     }

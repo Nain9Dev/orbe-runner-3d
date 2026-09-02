@@ -4,7 +4,7 @@
  */
 export const CONFIG = {
   world: {
-    gravity: -26,
+    gravity: -22,
     arenaSize: 40,     // lado del suelo cuadrado
     wallHeight: 3,
   },
@@ -17,7 +17,7 @@ export const CONFIG = {
   player: {
     speed: 9,
     airControl: 0.45,  // 0 = sin control en el aire, 1 = igual que en suelo
-    jump: 9.5,
+    jump: 10.5,
     radius: 0.6,
     lives: 3,
     respawnInvuln: 1.5, // segundos de invulnerabilidad tras recibir daño
@@ -45,7 +45,7 @@ export const CONFIG = {
   // Progresión: cada nivel es una fórmula, no una lista escrita a mano.
   level: (n) => ({
     orbs: 5 + n * 2,
-    enemies: Math.min(1 + Math.floor(n * 0.8), 12),
+    enemies: Math.min(1 + Math.floor(n * 0.5), 8),
     platforms: 4 + n,
     enemySpeed: CONFIG.enemy.speed + n * 0.35,
   }),

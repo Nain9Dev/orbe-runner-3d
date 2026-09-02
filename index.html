@@ -40,11 +40,15 @@
     <div class="hud-row">
       <span class="chip" id="hud-level">Nivel 1</span>
       <span class="chip" id="hud-score">Fragmentos 0/0</span>
-      <span class="chip" id="hud-lives">Vidas 3</span>
+      <div class="health-bar-container chip" aria-label="Vidas de Lúmen">
+        <span style="font-weight: bold; margin-right: 8px;">Lúmen:</span>
+        <div id="health-pips" style="display: flex; gap: 6px;">
+          <!-- Pips generados por JS -->
+        </div>
+      </div>
       <span class="chip" id="hud-fps">-- FPS</span>
     </div>
   </div>
-
   <div id="overlay">
     <div class="panel">
       <h1 id="overlay-title">Lúmen: Orbe Runner</h1>

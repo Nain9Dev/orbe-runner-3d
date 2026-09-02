@@ -18,8 +18,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2305d9e8'/></svg>" />
 
   <!-- Elimina el import map, Vite resuelve three -->
-  <script type="module" crossorigin src="./assets/index-BMGt2xg7.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DriHU5M5.css">
+  <script type="module" crossorigin src="./assets/index-CyFhc4vH.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-nPTIsFr0.css">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -41,11 +41,15 @@
     <div class="hud-row">
       <span class="chip" id="hud-level">Nivel 1</span>
       <span class="chip" id="hud-score">Fragmentos 0/0</span>
-      <span class="chip" id="hud-lives">Vidas 3</span>
+      <div class="health-bar-container chip" aria-label="Vidas de Lúmen">
+        <span style="font-weight: bold; margin-right: 8px;">Lúmen:</span>
+        <div id="health-pips" style="display: flex; gap: 6px;">
+          <!-- Pips generados por JS -->
+        </div>
+      </div>
       <span class="chip" id="hud-fps">-- FPS</span>
     </div>
   </div>
-
   <div id="overlay">
     <div class="panel">
       <h1 id="overlay-title">Lúmen: Orbe Runner</h1>
