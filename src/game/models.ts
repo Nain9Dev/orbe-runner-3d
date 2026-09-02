@@ -89,11 +89,11 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
     map: glowTexture(),
     color: 0x8ff2ff,
     transparent: true,
-    opacity: 0.25,
+    opacity: 0.15,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  halo.scale.setScalar(r * 4.2);
+  halo.scale.setScalar(r * 2.8);
   body.add(halo);
 
   /* 2. Núcleo emisivo ----------------------------------------------------- */
@@ -373,9 +373,9 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
       const beat = Math.sin(t * (3.2 + speed * 0.25));
       core.scale.setScalar(1 + beat * 0.07);
       core.rotation.y += dt * 0.8;
-      coreMat.emissiveIntensity = 2.6 + beat * 0.5 + speed * 0.05 + cheer * 1.5;
-      halo.scale.setScalar(r * (4.2 + beat * 0.15 + cheer * 0.9));
-      halo.material.opacity = 0.5 + beat * 0.06 + cheer * 0.35;
+      coreMat.emissiveIntensity = 1.6 + beat * 0.4 + speed * 0.05 + cheer * 1.0;
+      halo.scale.setScalar(r * (2.8 + beat * 0.15 + cheer * 0.5));
+      halo.material.opacity = 0.2 + beat * 0.05 + cheer * 0.2;
       lamp.intensity = 0.8 + beat * 0.2 + cheer * 0.5;
 
       /* Al recibir un golpe se pone rojo un instante. */
@@ -685,11 +685,11 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
     map: glowTexture(),
     color: auraColor,
     transparent: true,
-    opacity: 0.35,
+    opacity: 0.15,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  aura.scale.setScalar(r * (type === 'tank' ? 4.5 : 4));
+  aura.scale.setScalar(r * (type === 'tank' ? 3.0 : 2.5));
   body.add(aura);
 
   const phase = Math.random() * TAU;
@@ -725,8 +725,8 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
         ir.scale.setScalar(1 - nerves * 0.25); // pupila que se cierra al acercarse
       }
 
-      aura.material.opacity = 0.18 + aggro * 0.3 + Math.sin(t * 6 + phase) * 0.05;
-      aura.scale.setScalar(r * (type === 'tank' ? 4.1 : 3.6) + aggro * 1.1);
+      aura.material.opacity = 0.1 + aggro * 0.2 + Math.sin(t * 6 + phase) * 0.05;
+      aura.scale.setScalar(r * (type === 'tank' ? 3.0 : 2.5) + aggro * 0.6);
     },
   };
 }
@@ -772,11 +772,11 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
     map: glowTexture(),
     color: 0xffc861,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.2,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  halo.scale.setScalar(r * 4.5);
+  halo.scale.setScalar(r * 2.8);
   group.add(halo);
 
   // Pilar de luz hacia el cielo (Fino para parecer rayo, no ovalo masivo)
@@ -805,10 +805,10 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
       ringA.rotation.z += dt * 0.9;
       ringB.rotation.x -= dt * 1.1;
       const pulse = Math.sin(t * 2.6 + phase);
-      halo.scale.setScalar(r * (4.3 + pulse * 0.5));
-      halo.material.opacity = 0.42 + pulse * 0.12;
+      halo.scale.setScalar(r * (2.8 + pulse * 0.3));
+      halo.material.opacity = 0.18 + pulse * 0.08;
       
-      pillar.material.opacity = 0.25 + pulse * 0.1;
+      pillar.material.opacity = 0.15 + pulse * 0.05;
     },
   };
 }
