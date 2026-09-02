@@ -1,7 +1,8 @@
 # Project constitution
 
 A high-performance, zero-latency 3D endless runner. Tech Stack: TypeScript, Vite, HTML/CSS, Three.js (Raw WebGL, no heavy game engines).
-
+Open source 0€ of cost.
+Free tools.
 This file is the operational contract for any AI agent working on this repository (Claude Code, Codex, Cursor, Antigravity or any other). Read `docs/README.md` before proposing anything.
 
 ## Authority

@@ -12,6 +12,7 @@ A high-performance, 1-click endless runner 3D game playable directly in the brow
 4. **Mobile & Cross-Device Playability**: The game must be fully playable in mobile browsers using touch controls and responsive UI, maintaining the 1-click accessibility everywhere.
 5. **Raw WebGL Performance**: Achieve stable 60 FPS using raw Three.js primitives without the overhead of heavy game engines.
 6. **Spec Driven Development**: Maintain strict documentation and spec-driven iterations for any new features or architectural changes.
+7. **Narrative Identity**: Establish a cohesive lore (Lúmen vs Sombras) to provide personality and player motivation without adding overhead. See [Lore](file:///D:/Development/Personal-Projects/orbe-runner-3d/docs/20-lore.md).
 
 ## Non-Goals
 

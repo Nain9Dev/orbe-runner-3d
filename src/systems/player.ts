@@ -45,9 +45,17 @@ export function playerSystem(input) {
       if (body.grounded && !wasGrounded) world.events.emit('player:landed', e);
       wasGrounded = body.grounded;
 
-      if (body.grounded && input.down('Space')) {
+      // Coyote time: permite saltar unos frames tras perder el suelo
+      if (body.grounded) {
+        e.player.coyote = 8;
+      } else if (e.player.coyote > 0) {
+        e.player.coyote--;
+      }
+
+      if ((body.grounded || e.player.coyote > 0) && input.down('Space')) {
         body.velocity.y = CONFIG.player.jump;
         body.grounded = false;
+        e.player.coyote = 0; // Consume el salto
         world.events.emit('player:jump', e);
       }
     },

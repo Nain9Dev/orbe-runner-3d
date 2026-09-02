@@ -122,7 +122,7 @@ export function hudSystem(engine, input) {
     render(world) {
       const s = world.state;
       el.level.textContent = `Nivel ${s.level ?? 1}`;
-      el.score.textContent = `Orbes ${s.collected ?? 0}/${s.totalOrbs ?? 0}`;
+      el.score.textContent = `Fragmentos ${s.collected ?? 0}/${s.totalOrbs ?? 0}`;
       el.lives.textContent = `Vidas ${s.lives ?? 0}`;
       el.fps.textContent = `${engine.fps} FPS`;
     },
