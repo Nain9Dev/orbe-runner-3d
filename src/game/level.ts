@@ -181,7 +181,7 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
   if (n >= 2) {
     const powerupCount = n >= 4 && random() < 0.5 ? 2 : 1;
     for (let i = 0; i < powerupCount; i++) {
-      const types = ['shield', 'magnet', 'jump'];
+      const types = ['shield', 'magnet', 'jump', 'time'];
       const type = types[Math.floor(random() * types.length)];
       
       // Pueden aparecer en el suelo o en una plataforma

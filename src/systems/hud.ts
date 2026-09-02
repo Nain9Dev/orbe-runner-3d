@@ -224,6 +224,7 @@ export function hudSystem(engine, input) {
           if (type === 'shield') text = '🛡️ Escudo';
           if (type === 'magnet') text = '🧲 Imán';
           if (type === 'jump') text = '🚀 Súper Salto';
+          if (type === 'time') text = '⏳ Cámara Lenta';
           powerupEl.textContent = `${text} (${time}s)`;
           powerupEl.style.display = 'inline-block';
         } else {

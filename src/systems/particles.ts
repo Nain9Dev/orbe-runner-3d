@@ -80,6 +80,10 @@ export function particleSystem({ max = 260 } = {}) {
       world.events.on('player:jump', (player) => {
         burst(player.transform.position, 0x8ff2ff, 8, { speed: 1.4, spread: 1.3, up: 0.2, ttl: 0.35 });
       });
+      world.events.on('player:dash', (player) => {
+        // Estela horizontal brillante de partículas hacia atrás del movimiento
+        burst(player.transform.position, 0xffaa00, 25, { speed: 2.5, spread: 0.5, up: 0.1, ttl: 0.6 });
+      });
     },
 
     update(world, dt) {

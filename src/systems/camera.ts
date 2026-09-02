@@ -14,8 +14,19 @@ export function cameraSystem(input) {
   let yaw = 0;
   let pitch = 0.25;
 
+  let shakeIntensity = 0;
+
   return {
     name: 'camera',
+
+    init(world) {
+      world.events.on('player:damaged', () => {
+        shakeIntensity = 0.5; // Fuerte sacudida
+      });
+      world.events.on('player:dash', () => {
+        shakeIntensity = 0.15; // Pequeña vibración al dashear
+      });
+    },
 
     update(world, dt) {
       const { dx, dy } = input.consumeMouse();
@@ -43,6 +54,21 @@ export function cameraSystem(input) {
       desired.x = THREE.MathUtils.clamp(desired.x, -limit, limit);
       desired.z = THREE.MathUtils.clamp(desired.z, -limit, limit);
       desired.y = Math.max(desired.y, 1.2);
+
+      // Efecto Time Warp (FOV Shift)
+      const baseFov = 75;
+      const targetFov = world.state.timeScale < 1.0 ? 90 : baseFov;
+      camera.fov += (targetFov - camera.fov) * 5 * dt;
+      camera.updateProjectionMatrix();
+
+      // Screen Shake
+      if (shakeIntensity > 0) {
+        desired.x += (Math.random() - 0.5) * shakeIntensity;
+        desired.y += (Math.random() - 0.5) * shakeIntensity;
+        desired.z += (Math.random() - 0.5) * shakeIntensity;
+        shakeIntensity -= dt * 1.5;
+        if (shakeIntensity < 0) shakeIntensity = 0;
+      }
 
       // Suavizado independiente del framerate.
       const t = 1 - Math.exp(-CONFIG.camera.smooth * dt);

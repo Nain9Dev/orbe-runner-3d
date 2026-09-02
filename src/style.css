@@ -25,6 +25,19 @@ html, body {
   height: 100%;
 }
 
+#damage-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: inset 0 0 150px rgba(255, 0, 0, 0);
+  transition: box-shadow 0.1s ease-out;
+}
+#damage-vignette.hit {
+  box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.8);
+  transition: none;
+}
+
 /* ==========================================================================
    HUD (In-Game UI)
    Estilo minimalista, líneas finas, tipografía limpia.
