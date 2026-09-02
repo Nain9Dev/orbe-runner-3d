@@ -6,6 +6,7 @@
  */
 export function audioSystem() {
   let ctx: AudioContext | null = null;
+  let masterGain: GainNode | null = null;
   let isPlaying = false;
   let nextNoteTime = 0;
   let currentNote = 0;
@@ -19,7 +20,7 @@ export function audioSystem() {
   const noteDuration = 60 / (tempo * 2); // octavas
 
   function playNote(time: number, freq: number) {
-    if (!ctx) return;
+    if (!ctx || !masterGain) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -27,7 +28,7 @@ export function audioSystem() {
     osc.frequency.value = freq;
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterGain);
 
     // Envolvente rápida percusiva (synthwave bass)
     gain.gain.setValueAtTime(0, time);
@@ -57,6 +58,8 @@ export function audioSystem() {
       world.events.on('game:start', () => {
         if (!ctx) {
           ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          masterGain = ctx.createGain();
+          masterGain.connect(ctx.destination);
           nextNoteTime = ctx.currentTime + 0.1;
         }
         
@@ -73,7 +76,7 @@ export function audioSystem() {
       });
 
       world.events.on('orb:collected', () => {
-        if (!ctx || !isPlaying) return;
+        if (!ctx || !isPlaying || !masterGain) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
     
@@ -83,7 +86,7 @@ export function audioSystem() {
         osc.frequency.exponentialRampToValueAtTime(2093.00, ctx.currentTime + 0.1); // Pitch bend hacia C7
     
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(masterGain);
     
         // Envolvente percusiva corta (Ting!)
         gain.gain.setValueAtTime(0, ctx.currentTime);
@@ -96,6 +99,12 @@ export function audioSystem() {
     },
 
     update() {
+      if (masterGain) {
+        import('../config.js').then(m => {
+          masterGain!.gain.value = m.CONFIG.audio.muted ? 0 : 1;
+        });
+      }
+      
       if (isPlaying) {
         schedule();
       }

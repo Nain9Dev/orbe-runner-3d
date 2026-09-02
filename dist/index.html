@@ -18,8 +18,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2305d9e8'/></svg>" />
 
   <!-- Elimina el import map, Vite resuelve three -->
-  <script type="module" crossorigin src="./assets/index-B3QZXN9S.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CI2v0fCI.css">
+  <script type="module" crossorigin src="./assets/index-BMGt2xg7.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DriHU5M5.css">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -68,20 +68,30 @@
       <div class="setting-group">
         <label>Nivel Inicial:</label>
         <div class="level-selector">
-          <button id="lvl-down" class="btn-icon">-</button>
-          <span id="lvl-display">1</span>
-          <button id="lvl-up" class="btn-icon">+</button>
+          <button id="lvl-down" class="btn-icon" aria-label="Bajar nivel">-</button>
+          <span id="lvl-display" aria-live="polite">1</span>
+          <button id="lvl-up" class="btn-icon" aria-label="Subir nivel">+</button>
         </div>
       </div>
       
       <div class="setting-group">
-        <label>Color de Orbi:</label>
-        <div class="color-picker" id="color-picker">
-          <button class="color-btn active" data-color="0x6ee7ff" style="background: #6ee7ff; box-shadow: 0 0 10px #6ee7ff;"></button>
-          <button class="color-btn" data-color="0xff2a6d" style="background: #ff2a6d; box-shadow: 0 0 10px #ff2a6d;"></button>
-          <button class="color-btn" data-color="0xffc44d" style="background: #ffc44d; box-shadow: 0 0 10px #ffc44d;"></button>
-          <button class="color-btn" data-color="0x39ff14" style="background: #39ff14; box-shadow: 0 0 10px #39ff14;"></button>
+        <label>Color de Lúmen:</label>
+        <div class="color-picker" id="color-picker" role="radiogroup" aria-label="Seleccionar color">
+          <button class="color-btn active" data-color="0x6ee7ff" style="background: #6ee7ff; box-shadow: 0 0 10px #6ee7ff;" aria-label="Color Cyan" role="radio" aria-checked="true"></button>
+          <button class="color-btn" data-color="0xff2a6d" style="background: #ff2a6d; box-shadow: 0 0 10px #ff2a6d;" aria-label="Color Rosa" role="radio" aria-checked="false"></button>
+          <button class="color-btn" data-color="0xffc44d" style="background: #ffc44d; box-shadow: 0 0 10px #ffc44d;" aria-label="Color Amarillo" role="radio" aria-checked="false"></button>
+          <button class="color-btn" data-color="0x39ff14" style="background: #39ff14; box-shadow: 0 0 10px #39ff14;" aria-label="Color Verde" role="radio" aria-checked="false"></button>
         </div>
+      </div>
+
+      <div class="setting-group" style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="margin: 0;">Sonido</label>
+        <button id="btn-sound" class="btn-toggle active" aria-label="Alternar sonido">ON</button>
+      </div>
+
+      <div class="setting-group" style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="margin: 0;">Calidad Gráfica</label>
+        <button id="btn-gfx" class="btn-toggle active" aria-label="Alternar gráficos altos o bajos">ALTA</button>
       </div>
       
       <button id="btn-save" class="btn-outline" style="margin-top: 30px;">Guardar y Volver</button>

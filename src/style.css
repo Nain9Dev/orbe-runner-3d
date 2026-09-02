@@ -245,6 +245,27 @@ html, body {
   transform: scale(1.2);
 }
 
+.btn-toggle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  color: #777;
+  background: rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+  min-width: 80px;
+}
+
+.btn-toggle.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(5, 217, 232, 0.15);
+  box-shadow: 0 0 10px rgba(5, 217, 232, 0.3);
+}
+
 .hidden {
   display: none !important;
 }

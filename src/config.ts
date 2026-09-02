@@ -8,6 +8,12 @@ export const CONFIG = {
     arenaSize: 40,     // lado del suelo cuadrado
     wallHeight: 3,
   },
+  audio: {
+    muted: false,
+  },
+  graphics: {
+    lowQuality: false,
+  },
   player: {
     speed: 9,
     airControl: 0.45,  // 0 = sin control en el aire, 1 = igual que en suelo

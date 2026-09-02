@@ -24,11 +24,16 @@ export function hudSystem(engine, input) {
     init(world) {
       let pending = { level: parseInt(localStorage.getItem('orbi_level') || '1') };
       
-      // Color por defecto en Configuración persistida
+      // Leer Configuración
       const savedColor = localStorage.getItem('orbi_color');
-      if (savedColor) {
-        import('../config.js').then(m => m.CONFIG.player.color = parseInt(savedColor, 16));
-      }
+      const savedMute = localStorage.getItem('orbi_mute') === 'true';
+      const savedGfx = localStorage.getItem('orbi_gfx') === 'true'; // true = Low
+      
+      import('../config.js').then(m => {
+        if (savedColor) m.CONFIG.player.color = parseInt(savedColor, 16);
+        m.CONFIG.audio.muted = savedMute;
+        m.CONFIG.graphics.lowQuality = savedGfx;
+      });
 
       el.button.disabled = false;
       el.button.textContent = 'Jugar';
@@ -42,17 +47,36 @@ export function hudSystem(engine, input) {
       const lvlDown = document.getElementById('lvl-down');
       const lvlDisplay = document.getElementById('lvl-display');
       const colorBtns = document.querySelectorAll('.color-btn');
+      const btnSound = document.getElementById('btn-sound');
+      const btnGfx = document.getElementById('btn-gfx');
 
       let currentLevel = pending.level;
       lvlDisplay.textContent = currentLevel;
 
-      // Aplicar color activo en UI
+      // Aplicar estado visual inicial
       if (savedColor) {
         colorBtns.forEach(b => {
           b.classList.remove('active');
-          if (b.dataset.color === savedColor) b.classList.add('active');
+          b.setAttribute('aria-checked', 'false');
+          if (b.dataset.color === savedColor) {
+            b.classList.add('active');
+            b.setAttribute('aria-checked', 'true');
+          }
         });
       }
+
+      function updateToggleBtn(btn, state, labelOn, labelOff) {
+        if (state) {
+          btn.classList.add('active');
+          btn.textContent = labelOn;
+        } else {
+          btn.classList.remove('active');
+          btn.textContent = labelOff;
+        }
+      }
+
+      updateToggleBtn(btnSound, !savedMute, 'ON', 'OFF');
+      updateToggleBtn(btnGfx, !savedGfx, 'ALTA', 'BAJA');
 
       // Alternar Paneles
       btnSettings.addEventListener('click', () => {
@@ -63,6 +87,23 @@ export function hudSystem(engine, input) {
       btnSave.addEventListener('click', () => {
         settingsPanel.classList.add('hidden');
         mainContent.classList.remove('hidden');
+      });
+
+      // Lógica Toggles (Audio / Gfx)
+      let currentMute = savedMute;
+      btnSound.addEventListener('click', () => {
+        currentMute = !currentMute;
+        localStorage.setItem('orbi_mute', currentMute.toString());
+        updateToggleBtn(btnSound, !currentMute, 'ON', 'OFF');
+        import('../config.js').then(m => m.CONFIG.audio.muted = currentMute);
+      });
+
+      let currentGfx = savedGfx;
+      btnGfx.addEventListener('click', () => {
+        currentGfx = !currentGfx;
+        localStorage.setItem('orbi_gfx', currentGfx.toString());
+        updateToggleBtn(btnGfx, !currentGfx, 'ALTA', 'BAJA');
+        import('../config.js').then(m => m.CONFIG.graphics.lowQuality = currentGfx);
       });
 
       // Lógica Selector de Nivel
@@ -83,9 +124,13 @@ export function hudSystem(engine, input) {
       // Lógica Selector de Color
       colorBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-          colorBtns.forEach(b => b.classList.remove('active'));
+          colorBtns.forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-checked', 'false');
+          });
           const target = e.target as HTMLElement;
           target.classList.add('active');
+          target.setAttribute('aria-checked', 'true');
           const colorHex = target.dataset.color;
           localStorage.setItem('orbi_color', colorHex);
           import('../config.js').then(m => m.CONFIG.player.color = parseInt(colorHex, 16));

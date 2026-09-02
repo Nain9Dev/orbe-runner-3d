@@ -106,6 +106,14 @@ export function renderSystem(canvas) {
         e.render.mesh.position.copy(e.transform.position);
         e.render.mesh.rotation.y = e.transform.yaw;
       }
+      
+      // Aplicar Configuración Gráfica
+      import('../config.js').then(m => {
+        const isLow = m.CONFIG.graphics.lowQuality;
+        renderer.setPixelRatio(isLow ? 1 : Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = !isLow;
+      });
+
       renderer.render(scene, camera);
     },
 
