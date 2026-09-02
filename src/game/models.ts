@@ -252,7 +252,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
     new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: tint.clone(),
-      emissiveIntensity: 2.4,
+      emissiveIntensity: 1.0,
       roughness: 0.3,
       metalness: 0.4,
     }),
@@ -389,9 +389,9 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
 
       /* Propulsores: se encienden al correr y titilan. */
       const thrust = clamp(speed / 9, 0, 1);
-      flameMat.opacity = thrust * (0.55 + Math.sin(t * 30) * 0.12);
+      flameMat.opacity = thrust * (0.35 + Math.sin(t * 30) * 0.08);
       for (const flame of flames) flame.scale.set(1, 0.6 + thrust * 0.9, 1);
-      vent.material.emissiveIntensity = 1.8 + thrust * 2.2 + cheer * 2;
+      vent.material.emissiveIntensity = 0.4 + thrust * 0.5 + cheer * 0.1;
 
       /* Anillo: orbita más rápido cuanto más corres. */
       ring.rotation.z += dt * (0.6 + speed * 0.2);
@@ -832,7 +832,7 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
   const mat = once(`powerupMat_${type}`, () => new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: new THREE.Color(color),
-    emissiveIntensity: 1.2,
+    emissiveIntensity: 0.8,
     roughness: 0.1,
     metalness: 0.8,
     flatShading: true,
