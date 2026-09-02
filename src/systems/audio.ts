@@ -71,6 +71,28 @@ export function audioSystem() {
         // Pausar música al morir / menú principal
         isPlaying = false;
       });
+
+      world.events.on('orb:collected', () => {
+        if (!ctx || !isPlaying) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+    
+        // Sonido de "campanita" brillante (sine)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046.50, ctx.currentTime); // C6
+        osc.frequency.exponentialRampToValueAtTime(2093.00, ctx.currentTime + 0.1); // Pitch bend hacia C7
+    
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+    
+        // Envolvente percusiva corta (Ting!)
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+      });
     },
 
     update() {
