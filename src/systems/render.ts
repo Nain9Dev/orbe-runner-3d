@@ -58,8 +58,8 @@ export function renderSystem(canvas) {
   
   const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
   bloomPass.threshold = 0.2;
-  bloomPass.strength = 1.2;
-  bloomPass.radius = 0.5;
+  bloomPass.strength = 0.65;
+  bloomPass.radius = 0.3;
   composer.addPass(bloomPass);
 
   let currentTier = -1;

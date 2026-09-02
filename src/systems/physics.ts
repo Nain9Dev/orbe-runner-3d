@@ -42,6 +42,15 @@ export function physicsSystem() {
         // Integrar velocidad
         transform.position.addScaledVector(body.velocity, dt);
         
+        // Clamp al escenario para evitar salidas por colisión/velocidad extrema (Bug de Dash Out of Bounds)
+        if (e.tag === 'player') {
+           const limit = (CONFIG.world.arenaSize / 2) - body.radius;
+           if (transform.position.x > limit) transform.position.x = limit;
+           if (transform.position.x < -limit) transform.position.x = -limit;
+           if (transform.position.z > limit) transform.position.z = limit;
+           if (transform.position.z < -limit) transform.position.z = -limit;
+        }
+
         // Reset state for this frame
         body.grounded = false;
         

@@ -35,8 +35,8 @@ const GEO = {
 
 const MAT = {
   ground: new THREE.MeshStandardMaterial({ color: 0x01020a, roughness: 0.1, metalness: 0.8 }), // Suelo reflectante
-  platform: new THREE.MeshStandardMaterial({ color: 0x05d9e8, wireframe: true, emissive: 0x05d9e8, emissiveIntensity: 1.2, roughness: 0.3, metalness: 0.8 }), // Cyber wireframe
-  crumbling_platform: new THREE.MeshStandardMaterial({ color: 0xff2a6d, wireframe: true, emissive: 0xff2a6d, emissiveIntensity: 1.5, roughness: 0.5, metalness: 0.5 }), // Cyber wireframe
+  platform: new THREE.MeshStandardMaterial({ color: 0x05d9e8, emissive: 0x05d9e8, emissiveIntensity: 1.2, roughness: 0.3, metalness: 0.8 }), // Cyber solid
+  crumbling_platform: new THREE.MeshStandardMaterial({ color: 0xff2a6d, emissive: 0xff2a6d, emissiveIntensity: 1.5, roughness: 0.5, metalness: 0.5 }), // Cyber solid
   wall: new THREE.MeshStandardMaterial({ color: 0x010105, roughness: 0.9, metalness: 0.2 }),
 };
 

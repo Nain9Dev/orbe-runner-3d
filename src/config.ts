@@ -15,7 +15,7 @@ export const CONFIG = {
     lowQuality: false,
   },
   player: {
-    speed: 9,
+    speed: 14,
     airControl: 0.75,  // 0 = sin control en el aire, 1 = igual que en suelo
     jump: 12.5,
     radius: 0.6,
