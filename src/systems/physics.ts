@@ -19,7 +19,7 @@ export function physicsSystem() {
 
     update(world, dt) {
       const solids = world.find('solid', 'transform');
-      const bodies = world.query('transform', 'body');
+      const bodies = world.find('transform', 'body');
 
       // 1. Gravedad, Fricción e Integración.
       for (const e of bodies) {
