@@ -1,0 +1,35 @@
+{
+  "name": "orbe-runner-3d",
+  "version": "1.0.0",
+  "description": "**Jugar online: https://orbe.naindev.com**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nain9Dev/orbe-runner-3d.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Nain9Dev/orbe-runner-3d/issues"
+  },
+  "homepage": "https://github.com/Nain9Dev/orbe-runner-3d#readme",
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.4",
+    "terser": "^5.51.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}

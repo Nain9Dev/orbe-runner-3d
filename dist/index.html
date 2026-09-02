@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbe Runner 3D</title>
+  <meta name="description" content="Videojuego 3D open source hecho desde cero: recoge los orbes, esquiva a los cazadores y sube de nivel. Sin instalar nada, juega en el navegador." />
+  <meta name="theme-color" content="#0b1020" />
+
+  <!-- Vista previa al compartir el enlace -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Orbe Runner 3D" />
+  <meta property="og:description" content="Videojuego 3D open source hecho desde cero. Juega en el navegador, sin instalar nada." />
+  <meta property="og:url" content="https://orbe.naindev.com/" />
+  <meta property="og:image" content="https://orbe.naindev.com/preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%236ee7ff'/></svg>" />
+
+  <!-- Elimina el import map, Vite resuelve three -->
+  <script type="module" crossorigin src="./assets/index-BFgj0h78.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CXwGEAiy.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD: capa DOM independiente del render 3D -->
+  <div id="hud">
+    <div class="hud-row">
+      <span class="chip" id="hud-level">Nivel 1</span>
+      <span class="chip" id="hud-score">Orbes 0/0</span>
+      <span class="chip" id="hud-lives">Vidas 3</span>
+      <span class="chip" id="hud-fps">-- FPS</span>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="panel">
+      <h1 id="overlay-title">Orbe Runner 3D</h1>
+      <p id="overlay-text">Recoge todos los orbes y evita a los cazadores.</p>
+      <ul class="keys">
+        <li><b>WASD</b> moverse</li>
+        <li><b>Espacio</b> saltar</li>
+        <li><b>Ratón</b> girar cámara</li>
+        <li><b>Esc</b> soltar el ratón</li>
+      </ul>
+      <button id="start" disabled>Cargando…</button>
+    </div>
+  </div>
+
+</body>
+</html>
