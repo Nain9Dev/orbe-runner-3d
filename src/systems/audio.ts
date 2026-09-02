@@ -41,6 +41,21 @@ export function audioSystem() {
     osc.stop(time + noteDuration);
   }
 
+  function playArp(time: number, freq: number) {
+    if (!ctx || !masterGain || !lowPassFilter) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = freq * 4; // 2 octavas arriba
+    osc.connect(gain);
+    gain.connect(lowPassFilter);
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(0.05, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + noteDuration / 2);
+    osc.start(time);
+    osc.stop(time + noteDuration / 2);
+  }
+
   function playKick(time: number) {
     if (!ctx || !masterGain || !lowPassFilter) return;
     const osc = ctx.createOscillator();
@@ -79,6 +94,13 @@ export function audioSystem() {
       playNote(nextNoteTime, freq);
       
       const level = cachedWorld?.state?.level ?? 1;
+      const combo = cachedWorld?.state?.combo ?? 0;
+      
+      // Arpegio de Adrenalina si hay Combo
+      if (combo > 1) {
+        playArp(nextNoteTime, freq);
+        if (combo > 3) playArp(nextNoteTime + noteDuration / 2, scale[(pattern[currentNote % pattern.length] + 2) % scale.length] / 2);
+      }
       
       // Kick en cada golpe (4/4)
       if (currentNote % 4 === 0) playKick(nextNoteTime);

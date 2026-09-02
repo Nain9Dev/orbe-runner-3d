@@ -150,19 +150,27 @@ html, body {
 .health-bar-container {
   display: flex;
   gap: 8px;
+  justify-content: center;
 }
 
 .health-pip {
   width: 24px;
-  height: 6px;
+  height: 12px;
+  transform: skewX(-20deg);
   background: rgba(255, 255, 255, 0.1);
-  transform: skewX(-30deg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .health-pip.active {
+  animation: pulse-health 2s infinite alternate;
   background: var(--cyan);
   box-shadow: 0 0 12px var(--cyan);
+}
+
+@keyframes pulse-health {
+  0% { opacity: 0.8; filter: brightness(1); }
+  100% { opacity: 1; filter: brightness(1.3); }
 }
 
 /* ==========================================================================

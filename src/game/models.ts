@@ -582,6 +582,13 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
   hull.castShadow = true;
   body.add(hull);
 
+  // Chasis Cibernético Hostil (Wireframe)
+  const wireMat = new THREE.LineBasicMaterial({ color: spikeColor, transparent: true, opacity: 0.5 });
+  const wireGeo = new THREE.WireframeGeometry(hullGeo);
+  const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+  wireframe.scale.setScalar(1.05); // Sobresale para parecer una jaula de picos
+  hull.add(wireframe);
+
   // Armas/Apéndices según tipo
   const spikes = new THREE.Group();
   
