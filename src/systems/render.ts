@@ -50,16 +50,16 @@ export function renderSystem(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.0;
 
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
   
   const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-  bloomPass.threshold = 0.2;
-  bloomPass.strength = 0.65;
-  bloomPass.radius = 0.3;
+  bloomPass.threshold = 1.0;
+  bloomPass.strength = 0.35;
+  bloomPass.radius = 0.6;
   composer.addPass(bloomPass);
 
   let currentTier = -1;

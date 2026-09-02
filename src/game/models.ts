@@ -89,7 +89,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
     map: glowTexture(),
     color: 0x8ff2ff,
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.25,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
@@ -100,7 +100,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
   const coreMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: tint.clone(),
-    emissiveIntensity: 3.2,
+    emissiveIntensity: 1.5,
     roughness: 0.35,
     flatShading: true,
   });
