@@ -13,6 +13,7 @@ import { avatarSystem } from './systems/avatar.js';
 import { particleSystem } from './systems/particles.js';
 import { gameSystem } from './systems/game.js';
 import { hudSystem } from './systems/hud.js';
+import { audioSystem } from './systems/audio.js';
 
 /**
  * Arranque: montar el mundo y enchufar los sistemas en orden.
@@ -43,6 +44,7 @@ world.addSystem(avatarSystem());        // vida propia de los modelos
 world.addSystem(particleSystem());      // chispas, polvo y celebraciones
 world.addSystem(gameSystem());         // reglas: orbes, vidas, niveles
 world.addSystem(hudSystem(engine, input)); // marcadores y menús
+world.addSystem(audioSystem());        // música procedural
 
 // Recuperar el ratón tras pulsar Esc, sin volver al menú.
 canvas.addEventListener('click', () => {

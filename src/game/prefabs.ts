@@ -34,9 +34,9 @@ const GEO = {
 };
 
 const MAT = {
-  ground: new THREE.MeshStandardMaterial({ color: 0x232a58, roughness: 0.95 }),
-  platform: new THREE.MeshStandardMaterial({ color: 0x4b3f8f, roughness: 0.75, metalness: 0.15 }),
-  wall: new THREE.MeshStandardMaterial({ color: 0x141833, roughness: 1 }),
+  ground: new THREE.MeshStandardMaterial({ color: 0x01020a, roughness: 0.1, metalness: 0.8 }), // Suelo reflectante
+  platform: new THREE.MeshStandardMaterial({ color: 0x170321, emissive: 0xff2a6d, emissiveIntensity: 0.15, roughness: 0.3, metalness: 0.8 }), // Plataformas de cristal oscuro con brillo magenta
+  wall: new THREE.MeshStandardMaterial({ color: 0x010105, roughness: 0.9, metalness: 0.2 }),
 };
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);

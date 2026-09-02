@@ -1,7 +1,11 @@
 :root {
-  --bg: #0b1020;
+  --bg: #030514;
   --fg: #e8ecff;
-  --accent: #6ee7ff;
+  --accent: #ff2a6d;
+  --accent-glow: rgba(255, 42, 109, 0.6);
+  --cyan: #05d9e8;
+  --glass-bg: rgba(6, 10, 24, 0.4);
+  --glass-border: rgba(5, 217, 232, 0.3);
 }
 
 * { box-sizing: border-box; }
@@ -12,7 +16,7 @@ html, body {
   overflow: hidden;
   background: var(--bg);
   color: var(--fg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 #game {
@@ -21,82 +25,129 @@ html, body {
   height: 100%;
 }
 
-/* HUD */
+/* HUD Glassmorphism */
 #hud {
   position: fixed;
   top: 0; left: 0; right: 0;
-  padding: 12px;
+  padding: 20px;
   pointer-events: none;
+  z-index: 10;
 }
 
 .hud-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .chip {
-  background: rgba(10, 16, 34, 0.66);
-  border: 1px solid rgba(110, 231, 255, 0.35);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  color: var(--cyan);
+  text-transform: uppercase;
 }
 
-/* Overlay de menú / mensajes */
+/* Overlay Glassmorphism */
 #overlay {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(6, 10, 24, 0.72);
-  backdrop-filter: blur(4px);
+  background: rgba(3, 5, 20, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 20;
+  transition: opacity 0.4s ease;
 }
 
-#overlay.hidden { display: none; }
+#overlay.hidden { 
+  opacity: 0;
+  pointer-events: none;
+}
 
 .panel {
-  max-width: 420px;
+  max-width: 460px;
   text-align: center;
-  padding: 28px 32px;
-  border: 1px solid rgba(110, 231, 255, 0.28);
-  border-radius: 16px;
-  background: rgba(12, 18, 38, 0.9);
+  padding: 40px;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  background: rgba(10, 15, 30, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(0, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .panel h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-  color: var(--accent);
+  margin: 0 0 12px;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
 }
 
-.panel p { margin: 0 0 16px; opacity: 0.85; }
+.panel p { 
+  margin: 0 0 24px; 
+  font-size: 16px;
+  line-height: 1.5;
+  color: #a0a8cc;
+}
 
 .keys {
   list-style: none;
-  padding: 0;
-  margin: 0 0 20px;
+  padding: 16px;
+  margin: 0 0 30px;
   font-size: 14px;
-  opacity: 0.8;
+  background: rgba(0,0,0,0.3);
+  border-radius: 12px;
   display: grid;
-  gap: 4px;
+  gap: 10px;
+  text-align: left;
+}
+
+.keys b {
+  color: var(--cyan);
+  display: inline-block;
+  width: 60px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 #start {
-  font: inherit;
-  font-weight: 600;
-  padding: 10px 26px;
-  border-radius: 999px;
-  border: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 1px;
+  padding: 14px 40px;
+  border-radius: 30px;
+  border: none;
   cursor: pointer;
-  color: #04131b;
-  background: var(--accent);
+  color: #fff;
+  background: linear-gradient(45deg, var(--accent), #ff5e95);
+  box-shadow: 0 0 20px var(--accent-glow);
+  text-transform: uppercase;
+  transition: all 0.3s ease;
 }
 
-#start:hover { filter: brightness(1.1); }
+#start:hover:not(:disabled) { 
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 0 30px var(--accent);
+}
 
 #start:disabled {
-  opacity: 0.55;
-  cursor: progress;
+  background: #333;
+  color: #777;
+  box-shadow: none;
+  cursor: not-allowed;
 }

@@ -14,10 +14,10 @@ function skyTexture() {
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
   const grad = ctx.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#050914');   // cenit
-  grad.addColorStop(0.55, '#101a3a');
-  grad.addColorStop(0.8, '#24306b');
-  grad.addColorStop(1, '#3a2f6b');   // horizonte, con un toque violeta
+  grad.addColorStop(0, '#01020a');   // espacio
+  grad.addColorStop(0.55, '#170321');
+  grad.addColorStop(0.8, '#3d0a42');
+  grad.addColorStop(1, '#ff2a6d');   // horizonte neón
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 4, 256);
   const texture = new THREE.CanvasTexture(canvas);
@@ -30,7 +30,8 @@ export function renderSystem(canvas) {
   const scene = new THREE.Scene();
   const sky = skyTexture();
   scene.background = sky;
-  scene.fog = new THREE.Fog(0x141d3f, 55, 140);
+  // Niebla densa magenta/púrpura
+  scene.fog = new THREE.FogExp2(0x170321, 0.015);
 
   const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, 1, 0.1, 500);
   camera.position.set(0, 6, 12);
@@ -51,7 +52,8 @@ export function renderSystem(canvas) {
   pmrem.dispose();
 
   // Luces: una direccional con sombras + ambiente de relleno.
-  const sun = new THREE.DirectionalLight(0xfff0dd, 2.6);
+  // Luces: una direccional con sombras + ambiente de relleno.
+  const sun = new THREE.DirectionalLight(0xff2a6d, 2.6); // Luz rosa
   sun.position.set(18, 30, 12);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -61,7 +63,12 @@ export function renderSystem(canvas) {
   Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, far: 90 });
   sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0x9fc4ff, 0x241a44, 1.3));
+  scene.add(new THREE.HemisphereLight(0x05d9e8, 0x01012b, 1.5)); // Cyan a azul muy oscuro
+
+  // Cuadrícula Cyberpunk de Neón
+  const grid = new THREE.GridHelper(140, 70, 0x05d9e8, 0xff2a6d);
+  grid.position.y = -0.1;
+  scene.add(grid);
 
   // Contraluz frío: recorta las siluetas contra el fondo.
   const rim = new THREE.DirectionalLight(0x7fb0ff, 1.1);

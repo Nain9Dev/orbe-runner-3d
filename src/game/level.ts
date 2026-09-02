@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { spawn } from './prefabs.js';
 
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
 /** PRNG determinista: el mismo nivel se genera igual en cualquier máquina. */
 function rng(seed) {
   let s = seed >>> 0;
@@ -47,18 +49,32 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
 
   // Plataformas: dan verticalidad y sitios donde esconder orbes.
   const platforms = [];
+  let lastPos = new THREE.Vector3(range(-half + 6, half - 6), range(1.2, 4.5), range(-half + 6, half - 6));
+  
   for (let i = 0; i < spec.platforms; i++) {
-    const w = range(4, 8);
-    const d = range(4, 8);
-    const y = range(1.2, 4.5);
-    const position = new THREE.Vector3(
-      range(-half + 6, half - 6),
-      y,
-      range(-half + 6, half - 6),
-    );
+    const w = range(5, 9);
+    const d = range(5, 9);
+    
+    let position;
+    // 70% de probabilidad de crear un "puente" accesible desde la plataforma anterior
+    if (i > 0 && random() < 0.7) {
+      position = new THREE.Vector3(
+        clamp(lastPos.x + range(-8, 8), -half + 6, half - 6),
+        clamp(lastPos.y + range(-1.5, 2), 1.2, 6.0),
+        clamp(lastPos.z + range(-8, 8), -half + 6, half - 6)
+      );
+    } else {
+      position = new THREE.Vector3(
+        range(-half + 6, half - 6),
+        range(1.2, 4.5),
+        range(-half + 6, half - 6)
+      );
+    }
+    
     const size = new THREE.Vector3(w, 0.8, d);
     spawn(world, 'platform', { position, size });
     platforms.push({ position, size });
+    lastPos = position;
   }
 
   // Orbes: unos sobre plataformas, otros a ras de suelo.
