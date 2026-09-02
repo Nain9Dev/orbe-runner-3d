@@ -4,7 +4,7 @@
  */
 export const CONFIG = {
   world: {
-    gravity: -22,
+    gravity: -20,
     arenaSize: 40,     // lado del suelo cuadrado
     wallHeight: 3,
   },
@@ -16,8 +16,8 @@ export const CONFIG = {
   },
   player: {
     speed: 9,
-    airControl: 0.45,  // 0 = sin control en el aire, 1 = igual que en suelo
-    jump: 10.5,
+    airControl: 0.75,  // 0 = sin control en el aire, 1 = igual que en suelo
+    jump: 12.5,
     radius: 0.6,
     lives: 3,
     respawnInvuln: 1.5, // segundos de invulnerabilidad tras recibir daño
@@ -34,9 +34,9 @@ export const CONFIG = {
     fov: 62,
   },
   enemy: {
-    speed: 4.2,
+    speed: 4.5,
     radius: 0.7,
-    aggroRange: 12,    // fuera de este radio patrullan en vez de perseguir
+    aggroRange: 24,    // fuera de este radio patrullan en vez de perseguir
   },
   pickup: {
     radius: 0.55,

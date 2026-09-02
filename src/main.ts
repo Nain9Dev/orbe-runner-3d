@@ -14,6 +14,7 @@ import { particleSystem } from './systems/particles.js';
 import { gameSystem } from './systems/game.js';
 import { hudSystem } from './systems/hud.js';
 import { audioSystem } from './systems/audio.js';
+import { powerupsSystem } from './systems/powerups.js';
 
 /**
  * Arranque: montar el mundo y enchufar los sistemas en orden.
@@ -43,12 +44,20 @@ world.addSystem(cameraSystem(input));  // seguimiento de cámara
 world.addSystem(avatarSystem());        // vida propia de los modelos
 world.addSystem(particleSystem());      // chispas, polvo y celebraciones
 world.addSystem(gameSystem());         // reglas: orbes, vidas, niveles
+world.addSystem(powerupsSystem());     // gestor de ventajas temporales
 world.addSystem(hudSystem(engine, input)); // marcadores y menús
 world.addSystem(audioSystem());        // música procedural
 
-// Recuperar el ratón tras pulsar Esc, sin volver al menú.
+// Lógica de Pausa / Ratón
 canvas.addEventListener('click', () => {
   if (world.state.status === 'playing') input.requestLock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas && world.state.status === 'playing') {
+    world.state.status = 'paused';
+    world.events.emit('ui:pause');
+  }
 });
 
 engine.start();

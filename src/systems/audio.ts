@@ -118,20 +118,20 @@ export function audioSystem() {
           osc.start(ctx.currentTime);
           osc.stop(ctx.currentTime + 1.2);
         } else {
-          // Hit sound (ruido corto de onda cuadrada)
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(200, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
+          // Hit sound (ruido disonante corto)
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(80, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.4);
           
           osc.connect(gain);
           gain.connect(masterGain);
           
           gain.gain.setValueAtTime(0, ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+          gain.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
           
           osc.start(ctx.currentTime);
-          osc.stop(ctx.currentTime + 0.3);
+          osc.stop(ctx.currentTime + 0.4);
         }
       });
     },

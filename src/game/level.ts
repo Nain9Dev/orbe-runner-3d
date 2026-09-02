@@ -47,6 +47,20 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     });
   }
 
+  // Fondo Monumental Procedural (Monolitos gigantes fuera de la arena)
+  const numMonoliths = 12 + n * 2;
+  for (let i = 0; i < numMonoliths; i++) {
+    const angle = random() * Math.PI * 2;
+    const dist = range(half + 20, half + 80);
+    const width = range(5, 20);
+    const depth = range(5, 20);
+    const mHeight = range(20, 100);
+    spawn(world, 'monolith', {
+      position: new THREE.Vector3(Math.cos(angle) * dist, mHeight / 2 - 10, Math.sin(angle) * dist),
+      width, height: mHeight, depth
+    });
+  }
+
   // Plataformas: dan verticalidad y sitios donde esconder orbes.
   const platforms = [];
   let lastPos = new THREE.Vector3(range(-half + 6, half - 6), range(1.2, 4.5), range(-half + 6, half - 6));
@@ -56,11 +70,10 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     const d = range(5, 9);
     
     let position;
-    // 70% de probabilidad de crear un "puente" accesible desde la plataforma anterior
     if (i > 0 && random() < 0.7) {
       position = new THREE.Vector3(
         clamp(lastPos.x + range(-8, 8), -half + 6, half - 6),
-        clamp(lastPos.y + range(-1.5, 2.3), 1.2, 6.0), // max +2.3 diferencia de salto
+        clamp(lastPos.y + range(-1.5, 2.6), 1.2, 5.0), // max +2.6 diferencia de salto
         clamp(lastPos.z + range(-8, 8), -half + 6, half - 6)
       );
     } else {
@@ -75,7 +88,26 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     const size = new THREE.Vector3(w, 0.8, d);
     spawn(world, 'platform', { position, size });
     platforms.push({ position, size });
+    
+    // 30% de probabilidad de tener un Bounce Pad cerca
+    if (i > 0 && random() < 0.3) {
+      spawn(world, 'bounce_pad', {
+        position: new THREE.Vector3(position.x + range(-3, 3), 1.2, position.z + range(-3, 3))
+      });
+    }
+    
     lastPos = position;
+  }
+  
+  // Zonas de Lava (Muerte instantánea a nivel de suelo)
+  if (n >= 3) {
+    const lavaCount = Math.floor(n / 2);
+    for (let i = 0; i < lavaCount; i++) {
+      spawn(world, 'lava', {
+        position: new THREE.Vector3(range(-half + 10, half - 10), 0.6, range(-half + 10, half - 10)),
+        size: new THREE.Vector3(range(6, 12), 0.2, range(6, 12))
+      });
+    }
   }
 
   // Orbes: unos sobre plataformas, otros a ras de suelo.
@@ -105,7 +137,7 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     let type = 'tracker';
     if (n >= 5) {
       const rand = random();
-      type = rand < 0.2 ? 'tank' : rand < 0.6 ? 'stalker' : 'tracker';
+      type = rand < 0.1 ? 'tank' : rand < 0.4 ? 'stalker' : rand < 0.6 ? 'turret' : 'tracker';
     } else if (n >= 3) {
       type = random() < 0.4 ? 'stalker' : 'tracker';
     }
@@ -113,6 +145,38 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     spawn(world, 'enemy', { position, speed: spec.enemySpeed, type });
   }
 
+  // Jefe (Centinela) cada 5 niveles
+  if (n > 0 && n % 5 === 0) {
+    spawn(world, 'enemy', {
+      position: new THREE.Vector3(0, 5, -half + 10), // Aparece al fondo
+      speed: spec.enemySpeed * 0.8,
+      type: 'boss'
+    });
+  }
+
+  // Powerups (a partir del nivel 2)
+  if (n >= 2) {
+    const powerupCount = n >= 4 && random() < 0.5 ? 2 : 1;
+    for (let i = 0; i < powerupCount; i++) {
+      const types = ['shield', 'magnet', 'jump'];
+      const type = types[Math.floor(random() * types.length)];
+      
+      // Pueden aparecer en el suelo o en una plataforma
+      let position;
+      if (platforms.length > 0 && random() < 0.7) {
+        const p = platforms[Math.floor(random() * platforms.length)];
+        position = new THREE.Vector3(
+          p.position.x + range(-p.size.x / 3, p.size.x / 3),
+          p.position.y + p.size.y / 2 + 1,
+          p.position.z + range(-p.size.z / 3, p.size.z / 3),
+        );
+      } else {
+        position = new THREE.Vector3(range(-half + 3, half - 3), 1.2, range(-half + 3, half - 3));
+      }
+      
+      spawn(world, 'powerup', { position, type });
+    }
+  }
   const player = spawn(world, 'player', { position: new THREE.Vector3(0, 2, 0) });
   player.player.lives = lives;
 

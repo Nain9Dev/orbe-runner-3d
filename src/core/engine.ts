@@ -40,8 +40,10 @@ export class Engine {
     this._accumulator += elapsed;
 
     while (this._accumulator >= this.step) {
-      this.world.update(this.step);
-      this.time += this.step;
+      if (this.world.state.status !== 'paused') {
+        this.world.update(this.step);
+        this.time += this.step;
+      }
       this._accumulator -= this.step;
     }
 

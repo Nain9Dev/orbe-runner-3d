@@ -27,6 +27,12 @@ export function gameSystem() {
         }
       });
 
+      world.events.on('powerup:collected', ({ powerup }) => {
+        const player = world.first('player');
+        if (player) {
+          player.player.buff = { type: powerup.powerup.type, timeleft: 15 };
+        }
+      });
       world.events.on('player:hit', ({ player, source }) => damage(world, player, source));
 
       world.events.on('body:fell', (entity) => {
@@ -56,6 +62,16 @@ export function gameSystem() {
 
 function damage(world, player, source = null) {
   if (world.state.status !== 'playing' || player.player.invulnerable > 0) return;
+
+  if (player.player.buff?.type === 'shield') {
+    player.player.buff = null;
+    player.player.invulnerable = CONFIG.player.respawnInvuln;
+    // Efecto visual/sonoro del escudo rompiéndose podría ir aquí o escuchar `player:damaged` sin pérdida de vida.
+    // Emitimos igual el evento para audio pero indicando que el escudo paró el golpe.
+    const hitAt = player.transform.position.clone();
+    world.events.emit('player:damaged', { player, at: hitAt, shielded: true });
+    return;
+  }
 
   const hitAt = player.transform.position.clone(); // antes de reaparecer
   const dmg = source?.hazard?.damage ?? 1;

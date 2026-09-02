@@ -25,84 +25,158 @@ html, body {
   height: 100%;
 }
 
-/* HUD Glassmorphism */
+/* ==========================================================================
+   HUD (In-Game UI)
+   Estilo minimalista, líneas finas, tipografía limpia.
+   ========================================================================== */
 #hud {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  padding: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  inset: 0;
   pointer-events: none;
   z-index: 10;
   font-family: 'Inter', sans-serif;
+  color: var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
-.hud-row {
+.hud-top-left {
+  position: absolute;
+  top: 40px;
+  left: 40px;
   display: flex;
-  gap: 16px;
-  width: 100%;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.chip {
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  font-weight: 600;
-  color: white;
+.hud-top-right {
+  position: absolute;
+  top: 40px;
+  right: 40px;
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.hud-top-center {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.hud-bottom-center {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 8px;
+}
+
+/* Tipografía HUD */
+.hud-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 4px;
+}
+
+.hud-subtext {
+  font-size: 11px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 2px;
+}
+
+.hud-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.hud-powerup-text {
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--cyan);
+  letter-spacing: 6px;
+  text-shadow: 0 0 15px var(--cyan);
+  animation: pulsePowerup 2s infinite alternate;
+}
+
+@keyframes pulsePowerup {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; text-shadow: 0 0 25px var(--cyan); }
+}
+
+/* Retícula Central */
+.hud-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+.hud-reticle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+}
+
+/* Barra de Vida */
+.health-label {
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 4px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .health-bar-container {
   display: flex;
-  align-items: center;
+  gap: 8px;
 }
 
 .health-pip {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
+  width: 24px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  transform: skewX(-30deg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .health-pip.active {
   background: var(--cyan);
-  box-shadow: 0 0 8px var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
 }
 
-/* Overlay Glassmorphism */
-#overlay {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 15px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.5px;
-  color: var(--cyan);
-  text-transform: uppercase;
-}
-
-/* Overlay Glassmorphism */
+/* ==========================================================================
+   Overlay y Menús
+   Estilo AAA: Paneles oscuros, desenfoque, bordes finos.
+   ========================================================================== */
 #overlay {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(3, 5, 20, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(2, 4, 12, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 20;
   transition: opacity 0.4s ease;
 }
@@ -113,81 +187,107 @@ html, body {
 }
 
 .panel {
-  max-width: 460px;
+  width: 100%;
+  max-width: 600px;
+  padding: 60px;
   text-align: center;
-  padding: 40px;
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  background: rgba(10, 15, 30, 0.6);
-  box-shadow: 0 8px 32px 0 rgba(0, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(180deg, rgba(10, 15, 30, 0.6) 0%, rgba(5, 8, 20, 0.8) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .panel h1 {
-  margin: 0 0 12px;
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  background: linear-gradient(90deg, var(--cyan), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  margin: 0 0 16px;
+  font-size: 48px;
+  font-weight: 300;
+  letter-spacing: 12px;
+  color: #fff;
   text-transform: uppercase;
 }
 
 .panel p { 
-  margin: 0 0 24px; 
-  font-size: 16px;
-  line-height: 1.5;
-  color: #a0a8cc;
+  margin: 0 0 40px; 
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.keys {
-  list-style: none;
-  padding: 16px;
-  margin: 0 0 30px;
-  font-size: 14px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
+.controls-grid {
   display: grid;
-  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
   text-align: left;
 }
 
-.keys b {
+.control-key {
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-key span {
+  font-weight: 600;
   color: var(--cyan);
-  display: inline-block;
-  width: 60px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  padding: 4px 8px;
+  background: rgba(5, 217, 232, 0.1);
+  border: 1px solid rgba(5, 217, 232, 0.3);
 }
 
-#start {
+.panel-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* Botones */
+button {
   font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 1px;
-  padding: 14px 40px;
-  border-radius: 30px;
-  border: none;
-  cursor: pointer;
-  color: #fff;
-  background: linear-gradient(45deg, var(--accent), #ff5e95);
-  box-shadow: 0 0 20px var(--accent-glow);
   text-transform: uppercase;
-  transition: all 0.3s ease;
+  letter-spacing: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-#start:hover:not(:disabled) { 
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 0 30px var(--accent);
+.btn-primary {
+  padding: 16px 40px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  border: 1px solid #fff;
 }
 
-#start:disabled {
-  background: #333;
-  color: #777;
-  box-shadow: none;
+.btn-primary:hover:not(:disabled) { 
+  background: #fff;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  border-color: transparent;
   cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 16px 32px;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
 }
 
 /* Ajustes Extra */
@@ -329,61 +429,157 @@ html, body {
 
 #touch-joystick-base {
   position: absolute;
-  width: 120px;
-  height: 120px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(5, 217, 232, 0.4);
+  width: 140px;
+  height: 140px;
+  background: rgba(6, 10, 24, 0.4);
+  border: 1px solid rgba(5, 217, 232, 0.3);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  box-shadow: 0 0 15px rgba(5, 217, 232, 0.2);
+  box-shadow: inset 0 0 20px rgba(5, 217, 232, 0.1), 0 0 15px rgba(5, 217, 232, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 #touch-joystick-stick {
   position: absolute;
-  width: 50px;
-  height: 50px;
-  background: rgba(5, 217, 232, 0.6);
+  width: 56px;
+  height: 56px;
+  background: rgba(5, 217, 232, 0.3);
+  border: 2px solid rgba(5, 217, 232, 0.8);
   border-radius: 50%;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 10px rgba(5, 217, 232, 0.8);
+  box-shadow: 0 0 15px rgba(5, 217, 232, 0.6);
+  transition: transform 0.05s ease-out; /* suavizado al soltar */
 }
 
 #touch-jump-btn {
   position: absolute;
-  bottom: 40px;
-  right: 40px;
-  width: 90px;
-  height: 90px;
+  bottom: 50px;
+  right: 50px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  border: 3px solid rgba(5, 217, 232, 0.6);
-  color: #fff;
+  background: rgba(6, 10, 24, 0.5);
+  border: 2px solid rgba(5, 217, 232, 0.6);
+  color: var(--cyan);
   font-family: 'Inter', sans-serif;
-  font-size: 36px;
+  font-size: 32px;
   display: grid;
   place-items: center;
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 0 20px rgba(5, 217, 232, 0.3);
+  box-shadow: inset 0 0 15px rgba(5, 217, 232, 0.1), 0 0 20px rgba(5, 217, 232, 0.3);
   user-select: none;
   -webkit-user-select: none;
   z-index: 20;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: all 0.1s ease;
 }
 
 #touch-jump-btn:active {
-  background: rgba(5, 217, 232, 0.5);
-  transform: scale(0.92);
+  background: rgba(5, 217, 232, 0.3);
+  transform: scale(0.9);
+  box-shadow: inset 0 0 20px rgba(5, 217, 232, 0.6), 0 0 30px rgba(5, 217, 232, 0.5);
+  color: #fff;
 }
 
 #touch-right-zone.tap-active {
-  background: radial-gradient(circle at center, rgba(5, 217, 232, 0.15) 0%, transparent 60%);
+  background: radial-gradient(circle at center, rgba(5, 217, 232, 0.08) 0%, transparent 60%);
 }
 
 @media (pointer: coarse) {
   #touch-controls:not(.hidden) {
     display: flex;
   }
+}
+
+/* ==========================================================================
+   Móvil / Pantallas Pequeñas (Responsive UX)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* HUD adjustments */
+  .hud-top-left { top: 20px; left: 20px; }
+  .hud-top-right { top: 20px; right: 20px; }
+  .hud-bottom-center { bottom: 20px; }
+  
+  .hud-value { font-size: 24px; }
+  .health-label { font-size: 10px; }
+  
+  /* Menú inicial / Overlays amigables para pulgar */
+  .panel {
+    padding: 30px 20px;
+    width: 90%;
+    max-width: 400px;
+  }
+  
+  #overlay-title { font-size: 36px; }
+  #overlay-text { font-size: 14px; }
+  
+  .btn-primary {
+    font-size: 18px;
+    padding: 20px;
+    width: 100%;
+    margin-bottom: 15px;
+  }
+  
+  .btn-secondary {
+    font-size: 16px;
+    padding: 16px;
+    width: 100%;
+  }
+
+  .panel-actions {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  /* Ajustes */
+  .setting-group {
+    padding: 15px 0;
+    gap: 15px;
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  
+  .setting-group label {
+    font-size: 14px;
+    width: 100%;
+  }
+  
+  .level-selector {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .btn-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+  }
+  
+  #lvl-display {
+    font-size: 24px;
+  }
+  
+  .color-picker {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .color-btn {
+    width: 50px;
+    height: 50px;
+  }
+
+  .btn-toggle {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+  }
+
+  .controls-grid { display: none; } /* Ocultar controles de PC en móvil */
 }

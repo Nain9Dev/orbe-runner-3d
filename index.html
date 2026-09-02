@@ -37,31 +37,50 @@
 
   <!-- HUD: capa DOM independiente del render 3D -->
   <div id="hud">
-    <div class="hud-row">
-      <span class="chip" id="hud-level">Nivel 1</span>
-      <span class="chip" id="hud-score">Fragmentos 0/0</span>
-      <div class="health-bar-container chip" aria-label="Vidas de Lúmen">
-        <span style="font-weight: bold; margin-right: 8px;">Lúmen:</span>
-        <div id="health-pips" style="display: flex; gap: 6px;">
-          <!-- Pips generados por JS -->
-        </div>
+    <!-- Esquina Superior Izquierda: Nivel y FPS -->
+    <div class="hud-top-left">
+      <div id="hud-level" class="hud-text">NIVEL 1</div>
+      <div id="hud-fps" class="hud-subtext">-- FPS</div>
+    </div>
+
+    <!-- Centro Superior: Powerups -->
+    <div class="hud-top-center">
+      <div id="hud-powerup" class="hud-powerup-text" style="display: none;"></div>
+    </div>
+
+    <!-- Esquina Superior Derecha: Fragmentos -->
+    <div class="hud-top-right">
+      <div class="hud-text">FRAGMENTOS</div>
+      <div id="hud-score" class="hud-value">0</div>
+    </div>
+
+    <!-- Centro: Retícula -->
+    <div class="hud-reticle"></div>
+
+    <!-- Centro Inferior: Barra de Vida -->
+    <div class="hud-bottom-center">
+      <div class="health-label">INTEGRIDAD DEL NÚCLEO</div>
+      <div id="health-pips" class="health-bar-container" aria-label="Vidas de Lúmen">
+        <!-- Pips geométricos generados por JS -->
       </div>
-      <span class="chip" id="hud-fps">-- FPS</span>
     </div>
   </div>
+
   <div id="overlay">
     <div class="panel">
-      <h1 id="overlay-title">Lúmen: Orbe Runner</h1>
+      <h1 id="overlay-title">LÚMEN</h1>
       <p id="overlay-text">Salva la luz. Recoge los fragmentos estelares y escapa de las Sombras.</p>
-      <ul class="keys">
-        <li><b>WASD</b> moverse</li>
-        <li><b>Espacio</b> saltar</li>
-        <li><b>Ratón</b> girar cámara</li>
-        <li><b>Esc</b> soltar el ratón</li>
-      </ul>
-      <div style="display: flex; gap: 16px; justify-content: center; margin-top: 20px;">
-        <button id="start" disabled>Cargando...</button>
-        <button id="btn-settings" class="btn-outline">⚙️ Ajustes</button>
+      
+      <div class="controls-grid">
+        <div class="control-key"><span>W A S D</span> MOVERSE</div>
+        <div class="control-key"><span>ESPACIO</span> SALTAR</div>
+        <div class="control-key"><span>RATÓN</span> CÁMARA</div>
+        <div class="control-key"><span>ESC</span> MENÚ/PAUSA</div>
+      </div>
+
+      <div class="panel-actions">
+        <button id="start" class="btn-primary" disabled>CARGANDO...</button>
+        <button id="btn-settings" class="btn-secondary">AJUSTES</button>
       </div>
     </div>
     
@@ -97,7 +116,7 @@
         <button id="btn-gfx" class="btn-toggle active" aria-label="Alternar gráficos altos o bajos">ALTA</button>
       </div>
       
-      <button id="btn-save" class="btn-outline" style="margin-top: 30px;">Guardar y Volver</button>
+      <button id="btn-save" class="btn-primary" style="margin-top: 30px; width: 100%;">VOLVER</button>
     </div>
   </div>
 

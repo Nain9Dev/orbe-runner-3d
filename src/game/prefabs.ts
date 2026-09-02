@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { createOrbi, createHunter, createOrbGem } from './models.js';
+import { createOrbi, createHunter, createOrbGem, createPowerupIcon } from './models.js';
 
 /**
  * Registro de prefabs: nombre -> función que devuelve componentes.
@@ -50,17 +50,42 @@ function mesh(geometry, material, scale) {
   return m;
 }
 
+const cache = new Map();
+function once(key, factory) {
+  if (!cache.has(key)) cache.set(key, factory());
+  return cache.get(key);
+}
+
+function createMonolith({ width, height, depth }) {
+  const geo = once(`monolith_${width}_${height}_${depth}`, () => new THREE.BoxGeometry(width, height, depth));
+  const mat = once('monolithMat', () => new THREE.MeshStandardMaterial({
+    color: 0x05050a, roughness: 0.9, metalness: 0.1, flatShading: true
+  }));
+  const m = new THREE.Mesh(geo, mat);
+  m.receiveShadow = true;
+  m.castShadow = true;
+  
+  // Líneas de neón decorativas
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x05d9e8, transparent: true, opacity: 0.3 })
+  );
+  m.add(edges);
+  return m;
+}
+
 /* ------------------------------- Prefabs ---------------------------------- */
 
-definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
+definePrefab('player', ({ position = v3(0, 2, 0) } = {}, world) => {
   const r = CONFIG.player.radius;
+  const tier = world ? Math.floor((world.state.level - 1) / 3) : 0;
   // El protagonista es único, así que tiene su propio modelo animado (no se
   // comparte con nadie) en lugar de una geometría del catálogo.
-  const orbi = createOrbi({ radius: r, color: CONFIG.player.color });
+  const orbi = createOrbi({ radius: r, color: CONFIG.player.color, tier });
   return {
     tag: 'player',
     transform: { position: position.clone(), yaw: 0 },
-    body: { velocity: v3(), radius: r, grounded: false },
+    body: { velocity: v3(), radius: r, grounded: false, mass: 1.0, bounciness: 0.3, friction: 12, drag: 1 },
     player: {
       spawn: position.clone(),
       lives: CONFIG.player.lives,
@@ -71,29 +96,46 @@ definePrefab('player', ({ position = v3(0, 2, 0) } = {}) => {
   };
 });
 
-definePrefab('enemy', ({ position = v3(), speed = CONFIG.enemy.speed, type = 'tracker' } = {}) => {
+definePrefab('enemy', ({ position = v3(), speed = CONFIG.enemy.speed, type = 'tracker' } = {}, world) => {
   let r = CONFIG.enemy.radius;
   let spd = speed;
   let damage = 1;
   let aggroRange = CONFIG.enemy.aggroRange;
+
+  let mass = 1.2;
 
   if (type === 'stalker') {
     r = 0.5;
     spd = speed * 1.6;
     damage = 1;
     aggroRange = 10;
+    mass = 0.6; // Ligero
   } else if (type === 'tank') {
     r = 1.3;
     spd = speed * 0.5;
     damage = 2;
     aggroRange = 25;
+    mass = 5.0; // Pesado
+  } else if (type === 'boss') {
+    r = 3.0;
+    spd = speed * 0.9;
+    damage = 3;
+    aggroRange = 100; // Todo el mapa
+    mass = 1000.0; // Inamovible
+  } else if (type === 'turret') {
+    r = 0.8;
+    spd = 0; // Estática
+    damage = 1;
+    aggroRange = 40;
+    mass = 50.0;
   }
 
-  const hunter = createHunter({ radius: r, type });
+  const tier = world ? Math.floor((world.state.level - 1) / 3) : 0;
+  const hunter = createHunter({ radius: r, type, tier });
   return {
     tag: 'enemy',
     transform: { position: position.clone(), yaw: 0 },
-    body: { velocity: v3(), radius: r, grounded: false },
+    body: { velocity: v3(), radius: r, grounded: false, mass, bounciness: 0.1, friction: 10, drag: 2 },
     enemy: { type, speed: spd, aggroRange, home: position.clone(), wander: v3() },
     hazard: { radius: r + 0.2, damage },
     avatar: { api: hunter },
@@ -138,3 +180,51 @@ definePrefab('wall', ({ position = v3(), size = v3(1, 1, 1) } = {}) => ({
   solid: { size: size.clone() },
   render: { mesh: mesh(GEO.box, MAT.wall, size) },
 }));
+
+definePrefab('bounce_pad', ({ position = v3(), size = v3(2, 0.5, 2) } = {}) => {
+  const m = mesh(GEO.box, once('bounceMat', () => new THREE.MeshStandardMaterial({
+    color: 0x00ffff, emissive: 0x0088ff, emissiveIntensity: 1.5, roughness: 0.1
+  })), size);
+  return {
+    tag: 'bounce_pad',
+    transform: { position: position.clone(), yaw: 0 },
+    solid: { size: size.clone() },
+    bounce: { force: 25 }, // Componente para ser leído por player/physics
+    render: { mesh: m },
+  };
+});
+
+definePrefab('lava', ({ position = v3(), size = v3(10, 0.2, 10) } = {}) => {
+  const m = mesh(GEO.box, once('lavaMat', () => new THREE.MeshStandardMaterial({
+    color: 0xff3300, emissive: 0xff1100, emissiveIntensity: 1.2, roughness: 0.9
+  })), size);
+  m.castShadow = false;
+  return {
+    tag: 'lava',
+    transform: { position: position.clone(), yaw: 0 },
+    hazard: { radius: Math.max(size.x, size.z) / 2, damage: 10, box: size.clone() }, // Muerte instantánea (10 dmg)
+    render: { mesh: m },
+  };
+});
+
+definePrefab('powerup', ({ position = v3(), type = 'shield' } = {}) => {
+  const r = 0.5;
+  const icon = createPowerupIcon({ radius: r, type });
+  return {
+    tag: 'powerup',
+    transform: { position: position.clone(), yaw: 0 },
+    pickup: { value: 0, spin: 1.5, base: position.y }, // Usa pickup para girar/flotar
+    powerup: { type }, // El tag/componente que define qué hace
+    avatar: { api: icon },
+    render: { mesh: icon.group },
+  };
+});
+
+definePrefab('monolith', ({ position = v3(), width = 10, height = 50, depth = 10 } = {}) => {
+  const mesh = createMonolith({ width, height, depth });
+  return {
+    tag: 'monolith',
+    transform: { position: position.clone(), yaw: 0 },
+    render: { mesh }, // Decorativo puro, sin físicas
+  };
+});

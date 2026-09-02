@@ -20,14 +20,18 @@ export function triggerSystem() {
       const pos = player.transform.position;
       const reach = player.body.radius;
 
-      // Orbes: giran, flotan y se recogen al tocarlos.
-      for (const orb of world.find('pickup', 'transform')) {
-        orb.transform.yaw += orb.pickup.spin * dt;
-        orb.transform.position.y = orb.pickup.base + Math.sin(elapsed * 2 + orb.id) * 0.22;
+      // Objetos coleccionables (orbes y powerups): giran, flotan y se recogen al tocarlos.
+      for (const item of world.find('pickup', 'transform')) {
+        item.transform.yaw += item.pickup.spin * dt;
+        item.transform.position.y = item.pickup.base + Math.sin(elapsed * 2 + item.id) * 0.22;
 
-        if (pos.distanceTo(orb.transform.position) < reach + CONFIG.pickup.radius + 0.2) {
-          world.destroy(orb);
-          world.events.emit('orb:collected', { orb, value: orb.pickup.value });
+        if (pos.distanceTo(item.transform.position) < reach + CONFIG.pickup.radius + 0.2) {
+          world.destroy(item);
+          if (item.powerup) {
+            world.events.emit('powerup:collected', { powerup: item });
+          } else {
+            world.events.emit('orb:collected', { orb: item, value: item.pickup.value });
+          }
         }
       }
 

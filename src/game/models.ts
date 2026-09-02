@@ -53,14 +53,13 @@ const damp = (a, b, lambda, dt) => a + (b - a) * (1 - Math.exp(-lambda * dt));
  *                    ├── face  (fija)    ├── ring (orbita)
  *                    └── antenna (muelle) + luz propia
  * ------------------------------------------------------------------------- */
-export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
+export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {}) {
   const group = new THREE.Group();
   const body = new THREE.Group();
   group.add(body);
 
   const tint = new THREE.Color(color);
 
-  /* 1. Cáscara facetada de cristal --------------------------------------- */
   const shellMat = new THREE.MeshPhysicalMaterial({
     color: 0xbdf7ff,
     roughness: 0.1,
@@ -72,9 +71,17 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
     flatShading: true,   // las facetas hacen visible que rueda
     envMapIntensity: 1.5,
   });
-  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 2), shellMat);
+  const shellGeo = new THREE.IcosahedronGeometry(r, 2);
+  const shell = new THREE.Mesh(shellGeo, shellMat);
   shell.castShadow = true;
   body.add(shell);
+
+  // Chasis Cibernético: Malla de alambre sobre la cáscara
+  const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
+  const wireGeo = new THREE.WireframeGeometry(shellGeo);
+  const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+  wireframe.scale.setScalar(1.02); // Ligeramente más grande que la cáscara
+  shell.add(wireframe);
 
   // Halo: un sprite con degradado radial. Siempre mira a la cámara y se funde
   // con el fondo, así brilla de verdad en lugar de parecer una burbuja.
@@ -117,6 +124,37 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
   ring.rotation.set(Math.PI / 2 - 0.2, 0, 0.14);
   ring.castShadow = true;
   body.add(ring);
+
+  // Evolución Tier 1: Segundo anillo orbital
+  let ring2;
+  let crown; // Prevención de errores para Tiers > 3
+  if (tier >= 1) {
+    ring2 = new THREE.Mesh(
+      new THREE.TorusGeometry(r * 1.05, r * 0.05, 8, 36),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: tint.clone(),
+        emissiveIntensity: 0.8,
+        metalness: 1,
+        roughness: 0.2,
+      }),
+    );
+    ring2.position.y = r * 0.4;
+    ring2.rotation.set(Math.PI / 2 + 0.3, 0, -0.2);
+    ring2.castShadow = true;
+    body.add(ring2);
+  }
+
+  // Corona Tier 3
+  if (tier >= 3) {
+    crown = new THREE.Mesh(
+      new THREE.TorusGeometry(r * 0.4, r * 0.05, 4, 3),
+      new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 1.5 })
+    );
+    crown.position.y = r * 1.2;
+    crown.rotation.x = Math.PI / 2;
+    body.add(crown);
+  }
 
   /* 4. Cara (Visor Cibernético) -------------------------------------------- */
   const face = new THREE.Group();
@@ -178,17 +216,31 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
     ears.push({ group: ear, side, baseRotZ: ear.rotation.z });
   }
 
-  /* 4c. Manos de Energía Flotantes ----------------------------------------- */
+  /* 4c. Manos de Energía Articuladas ----------------------------------------- */
   const hands = [];
   const handMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, emissive: tint.clone(), emissiveIntensity: 2, transparent: true, opacity: 0.8
   });
   const handGeo = new THREE.SphereGeometry(r * 0.2, 12, 12);
+  const fingerGeo = new THREE.BoxGeometry(r * 0.08, r * 0.08, r * 0.08);
+
   for (const side of [-1, 1]) {
+    const handGroup = new THREE.Group();
+    handGroup.position.set(side * r * 1.1, -r * 0.2, r * 0.3);
+    
     const hand = new THREE.Mesh(handGeo, handMat);
-    hand.position.set(side * r * 1.1, -r * 0.2, r * 0.3);
-    body.add(hand);
-    hands.push({ mesh: hand, side, baseY: hand.position.y });
+    handGroup.add(hand);
+
+    // Dedos satélites
+    const fingers = [];
+    for (let i = 0; i < 3; i++) {
+      const finger = new THREE.Mesh(fingerGeo, handMat);
+      handGroup.add(finger);
+      fingers.push({ mesh: finger, offset: (i / 3) * TAU });
+    }
+
+    body.add(handGroup);
+    hands.push({ group: handGroup, side, baseY: handGroup.position.y, fingers });
   }
 
   /* 4d. Espalda: Respiradero y propulsores --------------------------------- */
@@ -223,6 +275,25 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
     flame.rotation.x = -Math.PI / 2; // la punta mira hacia atrás
     back.add(flame);
     flames.push(flame);
+  }
+
+  // Evolución Tier 2: Alas de energía
+  if (tier >= 2) {
+    const wingMat = new THREE.MeshBasicMaterial({
+      color: tint.clone(),
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const wingGeo = new THREE.ConeGeometry(r * 0.3, r * 1.5, 3);
+    for (const side of [-1, 1]) {
+      const wing = new THREE.Mesh(wingGeo, wingMat);
+      wing.position.set(side * r * 0.5, r * 0.3, -r * 0.6);
+      wing.rotation.set(-Math.PI / 3, 0, side * -0.5);
+      back.add(wing);
+    }
   }
 
   /* 5. Antena con muelle --------------------------------------------------- */
@@ -269,6 +340,8 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
   let antennaAng = 0;
   let lookX = 0;
   let lookY = 0;
+  let flipAng = 0; // Ángulo de voltereta
+  let flipVel = 0; // Velocidad de rotación de la voltereta
 
   return {
     group,
@@ -277,7 +350,12 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
     react(kind) {
       if (kind === 'collect') { cheer = 0.8; spin = TAU * 1.5; idle = 0; antennaVel -= 7; }
       if (kind === 'hit') { dizzy = 1.2; cheer = 0; }
-      if (kind === 'jump') { antennaVel -= 9; idle = 0; }
+      if (kind === 'jump') { 
+        antennaVel -= 9; 
+        idle = 0;
+        // Iniciar voltereta frontal rápida (360 grados)
+        flipVel = TAU * 1.5; 
+      }
     },
 
     /** Lo llama el sistema `avatar` en cada paso de lógica. */
@@ -338,16 +416,29 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
       body.position.y = hop + Math.sin(t * 2.2) * 0.03;
       body.scale.set(1 - squash * 0.18, 1 + squash * 0.3, 1 - squash * 0.18);
 
-      /* Celebración: la cáscara da vueltas y el cuerpo se contonea, pero la
-         cara sigue de frente para que se le vea la alegría. */
+      /* Celebración y Voltereta de Salto */
       if (spin > 0) {
         const step = Math.min(spin, dt * 14);
         shell.rotation.y += step;
         ring.rotation.z += step * 0.6;
         spin -= step;
       }
+      
+      // Progresar la voltereta frontal
+      if (!grounded && flipVel > 0) {
+        flipAng += flipVel * dt;
+        if (flipAng >= TAU) {
+          flipAng = 0; // Vuelta completa
+          flipVel = 0;
+        }
+      } else if (grounded) {
+        // Corrección de aterrizaje si se quedó a medias
+        flipAng = damp(flipAng, 0, 15, dt);
+        flipVel = 0;
+      }
+
       const wiggle = cheer > 0 ? Math.sin(t * 26) * 0.14 : 0;
-      body.rotation.x = lean + (dizzy > 0 ? Math.sin(t * 18) * 0.12 * hurt : 0);
+      body.rotation.x = lean - flipAng + (dizzy > 0 ? Math.sin(t * 18) * 0.12 * hurt : 0);
       body.rotation.z = bank + wiggle + (dizzy > 0 ? Math.cos(t * 15) * 0.15 * hurt : 0);
 
       /* Antena: muelle amortiguado que reacciona a saltos y frenazos. */
@@ -382,20 +473,42 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff } = {}) {
         ear.group.rotation.x = damp(ear.group.rotation.x, lean * 1.5, 10, dt);
       }
 
-      /* Manos de Energía: siguen el salto y se alzan al celebrar. */
+      /* Manos de Energía Articuladas: siguen el salto y orbitan sus dedos. */
       for (const hand of hands) {
         const joy = cheer > 0 ? r * 0.6 + Math.sin(t * 12 + hand.side) * 0.1 : 0;
         const drag = -squash * r * 0.8; 
         const targetY = hand.baseY + joy + drag;
-        hand.mesh.position.y = damp(hand.mesh.position.y, targetY, 15, dt);
-        hand.mesh.scale.setScalar(cheer > 0 ? 1.3 : 1);
-        hand.mesh.material.opacity = 0.6 + beat * 0.2 + (cheer > 0 ? 0.4 : 0);
+        hand.group.position.y = damp(hand.group.position.y, targetY, 15, dt);
+        hand.group.scale.setScalar(cheer > 0 ? 1.3 : 1);
+        
+        // Animación de los dedos flotantes
+        for (const finger of hand.fingers) {
+          const orbitR = r * 0.28 + (speed * 0.015);
+          const orbitT = t * 3 + finger.offset;
+          finger.mesh.position.set(
+            Math.cos(orbitT) * orbitR,
+            Math.sin(orbitT * 2) * orbitR * 0.5,
+            Math.sin(orbitT) * orbitR
+          );
+          finger.mesh.rotation.x += dt * 2;
+          finger.mesh.rotation.y += dt * 3;
+        }
       }
 
       /* Mofletes encendidos mientras celebra. */
       const blushAlpha = cheer > 0 ? 0.55 : 0;
       for (const blush of blushes) {
         blush.material.opacity = damp(blush.material.opacity, blushAlpha, 8, dt);
+      }
+
+      /* Animación de Tiers */
+      if (tier >= 1 && ring2) {
+        ring2.rotation.y += dt * 0.4;
+        ring2.rotation.x = Math.sin(t * 1.5) * 0.3;
+      }
+      if (tier >= 3 && crown) {
+        crown.rotation.y -= dt * 1.2;
+        crown.position.y = Math.sin(t * 3) * 0.15;
       }
     },
   };
@@ -417,7 +530,7 @@ const once = (key, make) => (cache[key] ??= make());
  * Lo contrario de Orbi a propósito: un solo ojo en vez de dos, ángulos en vez
  * de curvas, rojo en vez de cian y púas que se abren cuando te ha visto.
  * ------------------------------------------------------------------------- */
-export function createHunter({ radius: r = 0.7, type = 'tracker' } = {}) {
+export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {}) {
   const group = new THREE.Group();
   const body = new THREE.Group();
   group.add(body);
@@ -437,66 +550,128 @@ export function createHunter({ radius: r = 0.7, type = 'tracker' } = {}) {
     emissive = 0x400202;
     spikeColor = 0xaa1111;
     auraColor = 0xff1111;
+  } else if (type === 'boss') {
+    color = 0x050505;
+    emissive = 0xff0000;
+    spikeColor = 0xffffff;
+    auraColor = 0xff0055;
+  } else if (type === 'turret') {
+    color = 0x222222;
+    emissive = 0xffaa00;
+    spikeColor = 0xffaa00;
+    auraColor = 0xffee00;
   }
 
-  const hullMat = once(`hunterHull_${type}`, () => new THREE.MeshStandardMaterial({
-    color,
+  const hullMat = once(`hunterHull_${type}_${tier}`, () => new THREE.MeshStandardMaterial({
+    color: tier >= 2 ? 0x050505 : color,
     emissive: new THREE.Color(emissive),
-    emissiveIntensity: 0.55,
-    roughness: 0.55,
-    metalness: 0.35,
+    emissiveIntensity: 0.55 + tier * 0.2,
+    roughness: tier >= 2 ? 0.2 : 0.55,
+    metalness: tier >= 2 ? 0.8 : 0.35,
     flatShading: true,
   }));
-  const hull = new THREE.Mesh(
-    once(`hunterHullGeo_${type}`, () => new THREE.IcosahedronGeometry(r * 0.78, 1)),
-    hullMat,
-  );
+  
+  let hullGeo;
+  if (type === 'stalker') hullGeo = once('stalkerGeo', () => new THREE.CylinderGeometry(r * 0.9, r * 0.8, r * 0.4, 8));
+  else if (type === 'tank') hullGeo = once('tankGeo', () => new THREE.BoxGeometry(r * 1.2, r * 1.2, r * 1.2));
+  else if (type === 'boss') hullGeo = once('bossGeo', () => new THREE.DodecahedronGeometry(r * 1.1, 0));
+  else if (type === 'turret') hullGeo = once('turretGeo', () => new THREE.ConeGeometry(r * 0.9, r * 2, 4));
+  else hullGeo = once('trackerGeo', () => new THREE.IcosahedronGeometry(r * 0.78, 1)); // tracker
+  
+  const hull = new THREE.Mesh(hullGeo, hullMat);
   hull.castShadow = true;
   body.add(hull);
 
-  // Púas: se abren cuando persigue, se pegan al cuerpo cuando patrulla.
-  const spikeGeo = once(`hunterSpikeGeo_${type}`, () => new THREE.ConeGeometry(r * 0.13, r * (type === 'tank' ? 0.6 : 0.42), 5));
-  const spikeMat = once(`hunterSpikeMat_${type}`, () => new THREE.MeshStandardMaterial({
-    color: spikeColor, roughness: 0.35, metalness: 0.7, flatShading: true,
-  }));
+  // Armas/Apéndices según tipo
   const spikes = new THREE.Group();
-  for (let i = 0; i < (type === 'tank' ? 12 : 7); i++) {
-    const spike = new THREE.Mesh(spikeGeo, spikeMat);
-    // Repartidas por la esfera con la espiral de Fibonacci: nada de retícula.
-    const numSpikes = type === 'tank' ? 12 : 7;
-    const y = 1 - (i / (numSpikes - 1)) * 1.7;
-    const rad = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = i * 2.399;
-    const dir = new THREE.Vector3(Math.cos(theta) * rad, y, Math.sin(theta) * rad).normalize();
-    spike.position.copy(dir).multiplyScalar(r * 0.8);
-    spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    spike.castShadow = true;
-    spikes.add(spike);
+  
+  if (type === 'tracker') {
+    // Anillo de sierras
+    const sawGeo = once('trackerSawGeo', () => new THREE.TorusGeometry(r * 0.9, r * 0.05, 4, 16));
+    const sawMat = once('trackerSawMat', () => new THREE.MeshStandardMaterial({ color: 0xaa2244, metalness: 0.9, roughness: 0.1 }));
+    for (let i = 0; i < 2; i++) {
+      const saw = new THREE.Mesh(sawGeo, sawMat);
+      saw.rotation.x = i === 0 ? Math.PI/2 : 0;
+      spikes.add(saw);
+    }
+  } else if (type === 'tank') {
+    // Escudos pesados orbitantes
+    const shieldGeo = once('tankShieldGeo', () => new THREE.BoxGeometry(r * 0.6, r * 0.6, r * 0.2));
+    const shieldMat = once('tankShieldMat', () => new THREE.MeshStandardMaterial({ color: 0x220505, metalness: 0.8, roughness: 0.5 }));
+    for (let i = 0; i < 6; i++) {
+      const shield = new THREE.Mesh(shieldGeo, shieldMat);
+      const theta = (i / 6) * TAU;
+      shield.position.set(Math.cos(theta) * r * 1.1, 0, Math.sin(theta) * r * 1.1);
+      shield.lookAt(0, 0, 0);
+      spikes.add(shield);
+    }
+  } else if (type === 'stalker') {
+    // Aletas aerodinámicas cortantes
+    const finGeo = once('stalkerFinGeo', () => new THREE.ConeGeometry(r * 0.2, r * 1.2, 3));
+    const finMat = once('stalkerFinMat', () => new THREE.MeshStandardMaterial({ color: 0x551188, metalness: 0.6 }));
+    for (let i = 0; i < 4; i++) {
+      const fin = new THREE.Mesh(finGeo, finMat);
+      const theta = (i / 4) * TAU;
+      fin.position.set(Math.cos(theta) * r * 0.8, 0, Math.sin(theta) * r * 0.8);
+      fin.rotation.z = Math.PI / 2;
+      fin.rotation.y = -theta;
+      spikes.add(fin);
+    }
+  } else if (type === 'boss') {
+    // Escudos orbitales dobles (Centinela)
+    const ringGeo = once('bossRingGeo', () => new THREE.TorusGeometry(r * 1.5, r * 0.1, 4, 32));
+    const ringMat = once('bossRingMat', () => new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2 }));
+    for (let i = 0; i < 2; i++) {
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = i === 0 ? Math.PI/2 : 0;
+      spikes.add(ring);
+    }
+  } else if (type === 'turret') {
+    // Cañón láser que apunta
+    const gunGeo = once('turretGunGeo', () => new THREE.CylinderGeometry(r * 0.1, r * 0.2, r * 1.5, 8));
+    const gunMat = once('turretGunMat', () => new THREE.MeshStandardMaterial({ color: 0x333333 }));
+    const gun = new THREE.Mesh(gunGeo, gunMat);
+    gun.position.z = r;
+    gun.rotation.x = Math.PI / 2;
+    spikes.add(gun);
   }
+  
   body.add(spikes);
 
-  // Ojo único: la parte que da miedo. Sigue al jugador.
+  // Ojos (Stalker tiene múltiples ojos pequeños, los demás 1 gigante)
   const eye = new THREE.Group();
-  eye.position.z = r * 0.58;
+  eye.position.z = type === 'stalker' ? r * 0.4 : r * 0.58;
   body.add(eye);
 
-  const sclera = new THREE.Mesh(
-    once(`hunterEyeGeo_${type}`, () => new THREE.SphereGeometry(r * 0.44, 18, 14)),
-    once(`hunterEyeMat_${type}`, () => new THREE.MeshStandardMaterial({
-      color: 0xffe4e9, emissive: 0x552028, emissiveIntensity: 0.5, roughness: 0.25,
-    })),
-  );
-  eye.add(sclera);
+  const scleraGeo = once(`hunterEyeGeo_${type}`, () => new THREE.SphereGeometry(type === 'stalker' ? r * 0.15 : r * 0.44, 18, 14));
+  const scleraMat = once(`hunterEyeMat_${type}`, () => new THREE.MeshStandardMaterial({
+    color: 0xffe4e9, emissive: 0x552028, emissiveIntensity: 0.5, roughness: 0.25,
+  }));
+  const irisGeo = once(`hunterIrisGeo_${type}`, () => new THREE.SphereGeometry(type === 'stalker' ? r * 0.08 : r * 0.25, 16, 12));
+  
+  const irisBaseColor = type === 'stalker' ? 0xff2dcf : 0xff2d55;
+  const irisFinalColor = tier >= 3 ? 0xff0000 : irisBaseColor;
+  const irisMat = once(`hunterIrisMat_${type}_${tier}`, () => new THREE.MeshStandardMaterial({
+    color: 0x120308, emissive: new THREE.Color(irisFinalColor), emissiveIntensity: 1.6 + tier * 0.5, roughness: 0.2,
+  }));
 
-  const iris = new THREE.Mesh(
-    once(`hunterIrisGeo_${type}`, () => new THREE.SphereGeometry(r * 0.25, 16, 12)),
-    once(`hunterIrisMat_${type}`, () => new THREE.MeshStandardMaterial({
-      color: 0x120308, emissive: new THREE.Color(type === 'stalker' ? 0xff2dcf : 0xff2d55), emissiveIntensity: 1.6, roughness: 0.2,
-    })),
-  );
-  iris.position.z = r * 0.28;
-  iris.scale.set(1, 1, 0.6);
-  eye.add(iris);
+  const numEyes = type === 'stalker' ? 3 : 1;
+  const irises = [];
+  
+  for(let i=0; i < numEyes; i++) {
+    const sclera = new THREE.Mesh(scleraGeo, scleraMat);
+    const iris = new THREE.Mesh(irisGeo, irisMat);
+    iris.position.z = type === 'stalker' ? r * 0.1 : r * 0.28;
+    iris.scale.set(1, 1, 0.6);
+    sclera.add(iris);
+    
+    if (type === 'stalker') {
+      const offsetX = (i - 1) * 0.4 * r;
+      sclera.position.set(offsetX, 0, Math.abs(offsetX) * -0.2);
+    }
+    eye.add(sclera);
+    irises.push(iris);
+  }
 
   // Aura: delata a distancia que eso te está buscando.
   const aura = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -539,7 +714,9 @@ export function createHunter({ radius: r = 0.7, type = 'tracker' } = {}) {
       // El ojo te mira: dos ángulos a partir de la dirección local al jugador.
       eye.rotation.y = damp(eye.rotation.y, clamp(s.lookX ?? 0, -1, 1) * 0.8, 10, dt);
       eye.rotation.x = damp(eye.rotation.x, -clamp(s.lookY ?? 0, -1, 1) * 0.6, 10, dt);
-      iris.scale.setScalar(1 - nerves * 0.25); // pupila que se cierra al acercarse
+      for (const ir of irises) {
+        ir.scale.setScalar(1 - nerves * 0.25); // pupila que se cierra al acercarse
+      }
 
       aura.material.opacity = 0.18 + aggro * 0.3 + Math.sin(t * 6 + phase) * 0.05;
       aura.scale.setScalar(r * (type === 'tank' ? 4.1 : 3.6) + aggro * 1.1);
@@ -595,6 +772,19 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
   halo.scale.setScalar(r * 4.5);
   group.add(halo);
 
+  // Pilar de luz hacia el cielo
+  const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0xffc861,
+    transparent: true,
+    opacity: 0.3,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  pillar.scale.set(r * 3, r * 30, 1);
+  pillar.position.y = r * 10;
+  group.add(pillar);
+
   const phase = Math.random() * TAU;
   let t = 0;
 
@@ -610,6 +800,81 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
       const pulse = Math.sin(t * 2.6 + phase);
       halo.scale.setScalar(r * (4.3 + pulse * 0.5));
       halo.material.opacity = 0.42 + pulse * 0.12;
+      
+      pillar.material.opacity = 0.25 + pulse * 0.1;
+    },
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * POWER-UP — Item temporal (shield, magnet, jump).
+ * ------------------------------------------------------------------------- */
+export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
+  const group = new THREE.Group();
+
+  let color = 0x00ffff; // shield
+  if (type === 'magnet') color = 0xff00ff;
+  if (type === 'jump') color = 0x00ff00;
+
+  const geo = once(`powerupGeo_${type}`, () => {
+    if (type === 'magnet') return new THREE.TorusGeometry(r * 0.8, r * 0.25, 8, 16, Math.PI * 1.5);
+    if (type === 'jump') return new THREE.ConeGeometry(r * 0.7, r * 1.4, 4);
+    return new THREE.DodecahedronGeometry(r * 0.8, 0); // shield
+  });
+
+  const mat = once(`powerupMat_${type}`, () => new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: new THREE.Color(color),
+    emissiveIntensity: 1.2,
+    roughness: 0.1,
+    metalness: 0.8,
+    flatShading: true,
+  }));
+
+  const icon = new THREE.Mesh(geo, mat);
+  icon.castShadow = true;
+  group.add(icon);
+
+  // Halo exterior
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: color,
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  halo.scale.setScalar(r * 5);
+  group.add(halo);
+
+  // Pilar de luz holográfico
+  const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: color,
+    transparent: true,
+    opacity: 0.4,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  pillar.scale.set(r * 2.5, r * 40, 1);
+  pillar.position.y = r * 15;
+  group.add(pillar);
+
+  const phase = Math.random() * TAU;
+  let t = 0;
+
+  return {
+    group,
+    update(dt) {
+      t += dt;
+      icon.rotation.y -= dt * 2.0;
+      icon.rotation.z += dt * 1.0;
+      icon.position.y = Math.sin(t * 3.5 + phase) * 0.15;
+      
+      const pulse = Math.sin(t * 5.0 + phase);
+      halo.scale.setScalar(r * (4.8 + pulse * 0.4));
+      halo.material.opacity = 0.5 + pulse * 0.15;
+      pillar.material.opacity = 0.3 + pulse * 0.1;
     },
   };
 }

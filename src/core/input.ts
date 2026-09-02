@@ -9,6 +9,7 @@ export class Input {
   keys: Set<string>;
   virtualKeys: Set<string>;
   mouse: { dx: number; dy: number; locked: boolean };
+  joystick: { x: number; y: number }; // Vector analógico -1 a 1
   _target: any;
   _handlers: Array<() => void>;
 
@@ -16,6 +17,7 @@ export class Input {
     this.keys = new Set();
     this.virtualKeys = new Set();
     this.mouse = { dx: 0, dy: 0, locked: false };
+    this.joystick = { x: 0, y: 0 };
     this._target = target;
     this._handlers = [];
 
@@ -118,17 +120,23 @@ export class Input {
     this._bind(rightZone, 'touchend', endCam);
     this._bind(rightZone, 'touchcancel', endCam);
 
-    // Movimiento (Joystick Izquierdo)
+    // Movimiento (Joystick Izquierdo Analógico)
     let joyId: number | null = null;
     let origin = { x: 0, y: 0 };
-    const maxRadius = 40; // Pixeles de recorrido máximo del joystick
+    const maxRadius = 50; // Aumentado el radio para mayor precisión en móvil
 
     const updateVirtualWASD = (dx: number, dy: number) => {
+      // Calculamos un vector normalizado -1 a 1
+      this.joystick.x = dx / maxRadius;
+      this.joystick.y = dy / maxRadius;
+      
+      // Mantenemos virtual WASD para compatibilidad con el hud si hace falta,
+      // pero player.ts priorizará el this.joystick
       this.virtualKeys.delete('KeyW');
       this.virtualKeys.delete('KeyS');
       this.virtualKeys.delete('KeyA');
       this.virtualKeys.delete('KeyD');
-      const threshold = 15;
+      const threshold = 10;
       if (dy < -threshold) this.virtualKeys.add('KeyW');
       if (dy > threshold) this.virtualKeys.add('KeyS');
       if (dx < -threshold) this.virtualKeys.add('KeyA');
@@ -176,6 +184,7 @@ export class Input {
         if (e.changedTouches[i].identifier === joyId) {
           joyId = null;
           joyBase.classList.add('hidden');
+          joyStick.style.transform = `translate(-50%, -50%)`;
           updateVirtualWASD(0, 0); // reset
         }
       }

@@ -3,13 +3,15 @@ import { CONFIG } from '../config.js';
 
 const closest = new THREE.Vector3();
 const normal = new THREE.Vector3();
+const relVel = new THREE.Vector3();
+const deltaPos = new THREE.Vector3();
 
 /**
- * Física mínima pero suficiente: gravedad, integración y colisión
- * esfera-contra-caja estática. Sin dependencias externas.
- *
- * Cuerpos dinámicos = entidades con `body` (esferas).
- * Geometría estática = entidades con `solid` (cajas alineadas a los ejes).
+ * Motor de Físicas 2.0 (Spec 017)
+ * - Múltiples iteraciones para estabilidad
+ * - Colisiones Esfera-Caja con rebote (restitución)
+ * - Colisiones Esfera-Esfera con intercambio de masas
+ * - Fricción estandarizada
  */
 export function physicsSystem() {
   return {
@@ -17,33 +19,112 @@ export function physicsSystem() {
 
     update(world, dt) {
       const solids = world.find('solid', 'transform');
+      const bodies = world.query('transform', 'body');
 
-      for (const e of world.query('transform', 'body')) {
+      // 1. Gravedad, Fricción e Integración.
+      for (const e of bodies) {
         const { body, transform } = e;
 
-        // 1. Gravedad e integración.
-        body.velocity.y += CONFIG.world.gravity * dt;
-        transform.position.addScaledVector(body.velocity, dt);
-        body.grounded = false;
-
-        // 2. Resolución de penetraciones contra cada caja estática.
-        for (const s of solids) {
-          resolveSphereBox(transform.position, body, s.transform.position, s.solid.size);
+        // Fricción y Arrastre (si no las define el cuerpo, valores por defecto ágiles)
+        if (body.grounded) {
+          const friction = body.friction ?? 12; 
+          body.velocity.x -= body.velocity.x * Math.min(1, friction * dt);
+          body.velocity.z -= body.velocity.z * Math.min(1, friction * dt);
+        } else {
+          const drag = body.drag ?? 1;
+          body.velocity.x -= body.velocity.x * Math.min(1, drag * dt);
+          body.velocity.z -= body.velocity.z * Math.min(1, drag * dt);
         }
 
-        // 3. Red de seguridad: si algo se cae del mundo, avisamos.
+        // Gravedad
+        body.velocity.y += CONFIG.world.gravity * dt;
+
+        // Integrar velocidad
+        transform.position.addScaledVector(body.velocity, dt);
+        
+        // Reset state for this frame
+        body.grounded = false;
+        
+        // Red de seguridad
         if (transform.position.y < -25) world.events.emit('body:fell', e);
+      }
+
+      // 2. Resolución iterativa de colisiones (3 pasadas para estabilizar esquinas y apilamientos)
+      const ITERATIONS = 3;
+      for (let i = 0; i < ITERATIONS; i++) {
+        
+        // Colisiones dinámicas (Cuerpo vs Cuerpo)
+        const bodyArray = Array.from(bodies);
+        for (let j = 0; j < bodyArray.length; j++) {
+          for (let k = j + 1; k < bodyArray.length; k++) {
+            resolveSphereSphere(bodyArray[j], bodyArray[k]);
+          }
+        }
+
+        // Colisiones estáticas (Cuerpo vs Cajas)
+        for (const e of bodies) {
+          for (const s of solids) {
+            resolveSphereBox(e, s);
+          }
+        }
       }
     },
   };
 }
 
-function resolveSphereBox(position, body, boxCenter, boxSize) {
+function resolveSphereSphere(eA, eB) {
+  const pA = eA.transform.position;
+  const pB = eB.transform.position;
+  const bA = eA.body;
+  const bB = eB.body;
+
+  deltaPos.subVectors(pA, pB);
+  const dist = deltaPos.length();
+  const minDist = bA.radius + bB.radius;
+
+  if (dist > minDist || dist === 0) return; // No hay colisión
+
+  const depth = minDist - dist;
+  normal.copy(deltaPos).divideScalar(dist); // Dirección de B a A
+
+  const mA = bA.mass ?? 1;
+  const mB = bB.mass ?? 1;
+  const totalMass = mA + mB;
+  const invMassA = 1 / mA;
+  const invMassB = 1 / mB;
+  const invTotalMass = invMassA + invMassB;
+
+  // Separar cuerpos proporcional a sus masas
+  const ratioA = invMassA / invTotalMass;
+  const ratioB = invMassB / invTotalMass;
+  
+  pA.addScaledVector(normal, depth * ratioA);
+  pB.addScaledVector(normal, -depth * ratioB);
+
+  // Intercambio de impulsos (rebote elástico)
+  relVel.subVectors(bA.velocity, bB.velocity);
+  const velAlongNormal = relVel.dot(normal);
+
+  // Si ya se están separando, no aplicamos impulso
+  if (velAlongNormal > 0) return;
+
+  const bounciness = Math.min(bA.bounciness ?? 0.1, bB.bounciness ?? 0.1);
+  const j = -(1 + bounciness) * velAlongNormal / invTotalMass;
+
+  bA.velocity.addScaledVector(normal, j * invMassA);
+  bB.velocity.addScaledVector(normal, -j * invMassB);
+}
+
+function resolveSphereBox(bodyEntity, solidEntity) {
+  const position = bodyEntity.transform.position;
+  const body = bodyEntity.body;
+  const boxCenter = solidEntity.transform.position;
+  const boxSize = solidEntity.solid.size;
+
   const hx = boxSize.x / 2;
   const hy = boxSize.y / 2;
   const hz = boxSize.z / 2;
 
-  // Punto de la caja más cercano al centro de la esfera.
   closest.set(
     THREE.MathUtils.clamp(position.x, boxCenter.x - hx, boxCenter.x + hx),
     THREE.MathUtils.clamp(position.y, boxCenter.y - hy, boxCenter.y + hy),
@@ -53,14 +134,14 @@ function resolveSphereBox(position, body, boxCenter, boxSize) {
   normal.subVectors(position, closest);
   const distance = normal.length();
 
-  if (distance > body.radius) return; // sin contacto
+  if (distance > body.radius) return;
 
   let depth;
   if (distance > 1e-6) {
     normal.divideScalar(distance);
     depth = body.radius - distance;
   } else {
-    // Centro dentro de la caja: salimos por la cara más próxima.
+    // Centro atrapado dentro de la caja: salimos por la cara más próxima.
     const dx = hx + body.radius - Math.abs(position.x - boxCenter.x);
     const dy = hy + body.radius - Math.abs(position.y - boxCenter.y);
     const dz = hz + body.radius - Math.abs(position.z - boxCenter.z);
@@ -76,10 +157,24 @@ function resolveSphereBox(position, body, boxCenter, boxSize) {
     }
   }
 
-  // Sacamos la esfera y anulamos la velocidad que entraba en la caja.
+  // Separación
   position.addScaledVector(normal, depth);
-  const into = body.velocity.dot(normal);
-  if (into < 0) body.velocity.addScaledVector(normal, -into);
 
-  if (normal.y > 0.5) body.grounded = true;
+  // Restitución contra muros estáticos (asumimos masa infinita para la pared)
+  const into = body.velocity.dot(normal);
+  if (into < 0) {
+    const bounciness = body.bounciness ?? 0;
+    body.velocity.addScaledVector(normal, -into * (1 + bounciness));
+  }
+
+  // Si nos expulsa hacia arriba, consideramos que estamos en el suelo
+  if (normal.y > 0.5) {
+    body.grounded = true;
+    
+    // Si pisamos un Bounce Pad, salimos volando
+    if (solidEntity.bounce) {
+      body.velocity.y = solidEntity.bounce.force;
+      body.grounded = false; // Dejamos de estar en el suelo inmediatamente
+    }
+  }
 }

@@ -37,18 +37,12 @@ export function enemySystem() {
         dir.y = 0;
         if (dir.lengthSq() > 0) dir.normalize();
 
-        // Separación entre cazadores.
-        for (const other of enemies) {
-          if (other === e) continue;
-          away.subVectors(pos, other.transform.position);
-          away.y = 0;
-          const d = away.length();
-          if (d > 0 && d < CONFIG.enemy.radius * 3) dir.addScaledVector(away.divideScalar(d), 0.6);
-        }
-        if (dir.lengthSq() > 0) dir.normalize();
-
-        e.body.velocity.x += (dir.x * speed - e.body.velocity.x) * Math.min(1, 6 * dt);
-        e.body.velocity.z += (dir.z * speed - e.body.velocity.z) * Math.min(1, 6 * dt);
+        // La física ahora resuelve los choques entre enemigos,
+        // no hace falta código manual de separación.
+        const accelFactor = e.body.grounded ? (e.body.friction ?? 10) : (e.body.drag ?? 2);
+        
+        e.body.velocity.x += dir.x * speed * accelFactor * dt;
+        e.body.velocity.z += dir.z * speed * accelFactor * dt;
         e.transform.yaw = Math.atan2(dir.x, dir.z);
 
         // Saltito cuando chocan con un obstáculo pero siguen empujando.

@@ -138,8 +138,13 @@ export function hudSystem(engine, input) {
       });
 
       el.button.addEventListener('click', () => {
-        input.requestLock();               // el bloqueo de ratón exige un gesto del usuario
-        world.events.emit('game:start', pending);
+        input.requestLock();
+        if (world.state.status === 'paused') {
+          world.state.status = 'playing';
+          world.events.emit('ui:hide');
+        } else {
+          world.events.emit('game:start', pending);
+        }
       });
 
       world.events.on('ui:message', ({ title, text, button, action }) => {
@@ -158,6 +163,17 @@ export function hudSystem(engine, input) {
         el.touchControls?.classList.add('hidden');
       });
 
+      world.events.on('ui:pause', () => {
+        el.title.textContent = 'SISTEMA EN PAUSA';
+        el.text.textContent = 'Ajustes, estado y núcleo de Lúmen.';
+        el.button.textContent = 'REANUDAR';
+        el.button.hidden = false;
+        el.overlay.classList.remove('hidden');
+        mainContent.classList.remove('hidden');
+        settingsPanel.classList.add('hidden');
+        el.touchControls?.classList.add('hidden');
+      });
+
       world.events.on('ui:hide', () => {
         el.overlay.classList.add('hidden');
         el.touchControls?.classList.remove('hidden');
@@ -170,6 +186,23 @@ export function hudSystem(engine, input) {
       el.level.textContent = 'Nivel ' + world.state.level;
       if (engine.fps !== undefined) {
         el.fps.textContent = `${engine.fps} FPS`;
+      }
+      
+      const powerupEl = document.getElementById('hud-powerup');
+      if (powerupEl) {
+        const player = world.first('player');
+        if (player && player.player.buff) {
+          const type = player.player.buff.type;
+          const time = Math.ceil(player.player.buff.timeleft);
+          let text = '';
+          if (type === 'shield') text = '🛡️ Escudo';
+          if (type === 'magnet') text = '🧲 Imán';
+          if (type === 'jump') text = '🚀 Súper Salto';
+          powerupEl.textContent = `${text} (${time}s)`;
+          powerupEl.style.display = 'inline-block';
+        } else {
+          powerupEl.style.display = 'none';
+        }
       }
       
       // Sincronizar Pips de Vida
