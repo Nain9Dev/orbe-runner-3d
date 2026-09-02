@@ -316,7 +316,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
   antenna.add(bulb);
 
   /* 6. Luz propia ---------------------------------------------------------- */
-  const lamp = new THREE.PointLight(color, 4.5, 11, 2);
+  const lamp = new THREE.PointLight(color, 0.8, 11, 2);
   lamp.position.y = r * 0.2;
   body.add(lamp);
 
@@ -376,7 +376,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
       coreMat.emissiveIntensity = 2.6 + beat * 0.5 + speed * 0.05 + cheer * 1.5;
       halo.scale.setScalar(r * (4.2 + beat * 0.15 + cheer * 0.9));
       halo.material.opacity = 0.5 + beat * 0.06 + cheer * 0.35;
-      lamp.intensity = 2.6 + beat * 0.4 + cheer * 2;
+      lamp.intensity = 0.8 + beat * 0.2 + cheer * 0.5;
 
       /* Al recibir un golpe se pone rojo un instante. */
       const hurt = clamp(dizzy / 1.2, 0, 1);
@@ -779,16 +779,16 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
   halo.scale.setScalar(r * 4.5);
   group.add(halo);
 
-  // Pilar de luz hacia el cielo
+  // Pilar de luz hacia el cielo (Fino para parecer rayo, no ovalo masivo)
   const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
     map: glowTexture(),
     color: 0xffc861,
     transparent: true,
-    opacity: 0.3,
+    opacity: 0.15,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  pillar.scale.set(r * 3, r * 30, 1);
+  pillar.scale.set(r * 0.6, r * 30, 1);
   pillar.position.y = r * 10;
   group.add(pillar);
 
@@ -847,7 +847,7 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
     map: glowTexture(),
     color: color,
     transparent: true,
-    opacity: 0.6,
+    opacity: 0.25,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
@@ -859,11 +859,11 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
     map: glowTexture(),
     color: color,
     transparent: true,
-    opacity: 0.4,
+    opacity: 0.15,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  pillar.scale.set(r * 2.5, r * 40, 1);
+  pillar.scale.set(r * 0.5, r * 40, 1);
   pillar.position.y = r * 15;
   group.add(pillar);
 
@@ -880,8 +880,8 @@ export function createPowerupIcon({ radius: r = 0.5, type = 'shield' } = {}) {
       
       const pulse = Math.sin(t * 5.0 + phase);
       halo.scale.setScalar(r * (4.8 + pulse * 0.4));
-      halo.material.opacity = 0.5 + pulse * 0.15;
-      pillar.material.opacity = 0.3 + pulse * 0.1;
+      halo.material.opacity = 0.2 + pulse * 0.1;
+      pillar.material.opacity = 0.1 + pulse * 0.05;
     },
   };
 }
