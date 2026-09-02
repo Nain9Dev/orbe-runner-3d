@@ -35,8 +35,11 @@ export class Engine {
     if (!this.running) return;
     requestAnimationFrame(this._tick);
 
-    const elapsed = Math.min((now - this._last) / 1000, this.maxFrame);
+    const rawElapsed = Math.min((now - this._last) / 1000, this.maxFrame);
     this._last = now;
+    
+    const scale = this.world.state.timeScale ?? 1.0;
+    const elapsed = rawElapsed * scale;
     this._accumulator += elapsed;
 
     while (this._accumulator >= this.step) {

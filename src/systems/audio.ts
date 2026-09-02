@@ -7,9 +7,11 @@
 export function audioSystem() {
   let ctx: AudioContext | null = null;
   let masterGain: GainNode | null = null;
+  let lowPassFilter: BiquadFilterNode | null = null;
   let isPlaying = false;
   let nextNoteTime = 0;
   let currentNote = 0;
+  let cachedWorld: any = null;
 
   // Escala pentatónica menor (A menor)
   const scale = [220.00, 261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
@@ -39,12 +41,55 @@ export function audioSystem() {
     osc.stop(time + noteDuration);
   }
 
+  function playKick(time: number) {
+    if (!ctx || !masterGain || !lowPassFilter) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, time);
+    osc.frequency.exponentialRampToValueAtTime(0.001, time + 0.5);
+    osc.connect(gain);
+    gain.connect(lowPassFilter);
+    gain.gain.setValueAtTime(1.0, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+    osc.start(time);
+    osc.stop(time + 0.5);
+  }
+
+  function playHihat(time: number) {
+    if (!ctx || !masterGain || !lowPassFilter) return;
+    // Hi-hat simulado con un oscilador cuadrado muy rápido y envolvente ultracorta
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(400, time);
+    osc.connect(gain);
+    gain.connect(lowPassFilter);
+    gain.gain.setValueAtTime(0.1, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+    osc.start(time);
+    osc.stop(time + 0.05);
+  }
+
   function schedule() {
     if (!ctx || !isPlaying) return;
 
     while (nextNoteTime < ctx.currentTime + 0.1) {
-      const freq = scale[pattern[currentNote % pattern.length]] / 2; // Bass (bajar octava)
+      const freq = scale[pattern[currentNote % pattern.length]] / 2; // Bass
       playNote(nextNoteTime, freq);
+      
+      const level = cachedWorld?.state?.level ?? 1;
+      
+      // Kick en cada golpe (4/4)
+      if (currentNote % 4 === 0) playKick(nextNoteTime);
+      
+      // Hi-hats rítmicos a partir del nivel 3
+      if (level >= 3 && currentNote % 2 === 1) playHihat(nextNoteTime);
+      // Doble Hi-hat en niveles altos
+      if (level >= 6 && currentNote % 4 === 2) {
+        playHihat(nextNoteTime);
+        playHihat(nextNoteTime + noteDuration / 2);
+      }
       
       nextNoteTime += noteDuration;
       currentNote++;
@@ -55,12 +100,25 @@ export function audioSystem() {
     name: 'audio',
     
     init(world: any) {
+      cachedWorld = world;
+
       world.events.on('game:start', () => {
         if (!ctx) {
           ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
           masterGain = ctx.createGain();
+          lowPassFilter = ctx.createBiquadFilter();
+          
+          lowPassFilter.type = 'lowpass';
+          lowPassFilter.frequency.value = 20000; // Abierto por defecto
+
+          lowPassFilter.connect(masterGain);
           masterGain.connect(ctx.destination);
           nextNoteTime = ctx.currentTime + 0.1;
+        }
+        
+        if (lowPassFilter) {
+          // Abrir el filtro al jugar
+          lowPassFilter.frequency.setTargetAtTime(20000, ctx.currentTime, 0.5);
         }
         
         if (ctx.state === 'suspended') {
@@ -71,8 +129,11 @@ export function audioSystem() {
       });
 
       world.events.on('ui:message', () => {
-        // Pausar música al morir / menú principal
-        isPlaying = false;
+        // Pausar música al morir / menú principal no la corta, aplica LowPass filter para ahogarla
+        if (lowPassFilter && ctx) {
+          lowPassFilter.frequency.setTargetAtTime(300, ctx.currentTime, 0.1); // Muffled effect
+        }
+        // No detenemos isPlaying, solo la ahogamos
       });
 
       world.events.on('orb:collected', () => {
@@ -86,7 +147,7 @@ export function audioSystem() {
         osc.frequency.exponentialRampToValueAtTime(2093.00, ctx.currentTime + 0.1); // Pitch bend hacia C7
     
         osc.connect(gain);
-        gain.connect(masterGain);
+        gain.connect(masterGain); // Pasa directo al master sin filtro ahogado
     
         // Envolvente percusiva corta (Ting!)
         gain.gain.setValueAtTime(0, ctx.currentTime);
@@ -133,6 +194,24 @@ export function audioSystem() {
           osc.start(ctx.currentTime);
           osc.stop(ctx.currentTime + 0.4);
         }
+      });
+
+      world.events.on('game:levelup', () => {
+        // Acorde de victoria!
+        if (!ctx || !masterGain) return;
+        [523.25, 659.25, 783.99].forEach((freq, idx) => { // C Mayor
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          gain.connect(masterGain);
+          gain.gain.setValueAtTime(0, ctx.currentTime + idx * 0.1);
+          gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + idx * 0.1 + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.0);
+          osc.start(ctx.currentTime + idx * 0.1);
+          osc.stop(ctx.currentTime + 2.0);
+        });
       });
     },
 

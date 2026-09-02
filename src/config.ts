@@ -45,8 +45,9 @@ export const CONFIG = {
   // Progresión: cada nivel es una fórmula, no una lista escrita a mano.
   level: (n) => ({
     orbs: 5 + n * 2,
-    enemies: Math.min(1 + Math.floor(n * 0.5), 8),
-    platforms: 4 + n,
-    enemySpeed: CONFIG.enemy.speed + n * 0.35,
+    enemies: Math.min(1 + Math.floor(n * 0.4), 5), // Max 5 enemigos
+    platforms: 4 + Math.floor(n * 1.5),
+    enemySpeed: CONFIG.enemy.speed + n * 0.15, // Crecen más despacio
+    arenaScale: Math.min(1 + (n * 0.05), 1.5), // La arena crece hasta un 50%
   }),
 };

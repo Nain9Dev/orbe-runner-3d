@@ -23,7 +23,8 @@ function rng(seed) {
  */
 export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
   const spec = CONFIG.level(n);
-  const size = CONFIG.world.arenaSize;
+  // La arena crece con el nivel para dar más espacio de maniobra
+  const size = CONFIG.world.arenaSize * (spec.arenaScale || 1.0);
   const half = size / 2;
   const random = rng(1000 + n * 7919);
   const range = (min, max) => min + random() * (max - min);
@@ -61,26 +62,31 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     });
   }
 
-  // Plataformas: dan verticalidad y sitios donde esconder orbes.
+  // Plataformas: crear "caminos" y parkour.
   const platforms = [];
-  let lastPos = new THREE.Vector3(range(-half + 6, half - 6), range(1.2, 4.5), range(-half + 6, half - 6));
+  let lastPos = new THREE.Vector3(range(-half + 8, half - 8), range(1.2, 3.0), range(-half + 8, half - 8));
   
   for (let i = 0; i < spec.platforms; i++) {
-    const w = range(5, 9);
-    const d = range(5, 9);
+    const w = range(6, 10);
+    const d = range(6, 10);
     
     let position;
-    if (i > 0 && random() < 0.7) {
+    // 85% probabilidad de continuar el camino (Parkour)
+    if (i > 0 && random() < 0.85) {
+      // Elegir una dirección dominante (X o Z) para hacer escaleras
+      const dirX = random() < 0.5 ? 1 : -1;
+      const dirZ = random() < 0.5 ? 1 : -1;
+      const isX = random() < 0.5;
+      
       position = new THREE.Vector3(
-        clamp(lastPos.x + range(-8, 8), -half + 6, half - 6),
-        clamp(lastPos.y + range(-1.5, 2.6), 1.2, 5.0), // max +2.6 diferencia de salto
-        clamp(lastPos.z + range(-8, 8), -half + 6, half - 6)
+        clamp(lastPos.x + (isX ? range(6, 10) * dirX : range(-3, 3)), -half + 6, half - 6),
+        clamp(lastPos.y + range(1.0, 3.0), 1.2, 8.0), // Pueden subir más alto ahora
+        clamp(lastPos.z + (isX ? range(-3, 3) : range(6, 10) * dirZ), -half + 6, half - 6)
       );
     } else {
-      // Plataforma desconectada (debe ser alcanzable desde el suelo)
       position = new THREE.Vector3(
         range(-half + 6, half - 6),
-        range(1.2, 3.2), // 1.2 es el suelo, max altura saltando desde suelo es 3.7
+        range(1.2, 3.2),
         range(-half + 6, half - 6)
       );
     }
@@ -89,10 +95,10 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     spawn(world, 'platform', { position, size });
     platforms.push({ position, size });
     
-    // 30% de probabilidad de tener un Bounce Pad cerca
-    if (i > 0 && random() < 0.3) {
+    // Si la plataforma es muy alta o por azar, poner un Bounce Pad para ayudar
+    if (i > 0 && (position.y > 4.5 || random() < 0.5)) {
       spawn(world, 'bounce_pad', {
-        position: new THREE.Vector3(position.x + range(-3, 3), 1.2, position.z + range(-3, 3))
+        position: new THREE.Vector3(position.x, position.y + 0.4, position.z)
       });
     }
     
@@ -110,9 +116,9 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     }
   }
 
-  // Orbes: unos sobre plataformas, otros a ras de suelo.
+  // Orbes: forzamos que el 85% estén sobre las plataformas para incentivar saltar
   for (let i = 0; i < spec.orbs; i++) {
-    const onPlatform = platforms.length > 0 && random() < 0.55;
+    const onPlatform = platforms.length > 0 && random() < 0.85;
     let position;
     if (onPlatform) {
       const p = platforms[Math.floor(random() * platforms.length)];
@@ -137,9 +143,10 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     let type = 'tracker';
     if (n >= 5) {
       const rand = random();
-      type = rand < 0.1 ? 'tank' : rand < 0.4 ? 'stalker' : rand < 0.6 ? 'turret' : 'tracker';
+      // Tanques y torretas son molestos, reducir su probabilidad
+      type = rand < 0.05 ? 'tank' : rand < 0.25 ? 'stalker' : rand < 0.35 ? 'turret' : 'tracker';
     } else if (n >= 3) {
-      type = random() < 0.4 ? 'stalker' : 'tracker';
+      type = random() < 0.3 ? 'stalker' : 'tracker';
     }
 
     spawn(world, 'enemy', { position, speed: spec.enemySpeed, type });

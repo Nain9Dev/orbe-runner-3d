@@ -174,10 +174,10 @@ html, body {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(2, 4, 12, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 20;
+  background: rgba(2, 4, 12, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100;
   transition: opacity 0.4s ease;
 }
 
@@ -186,24 +186,49 @@ html, body {
   pointer-events: none;
 }
 
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .panel {
   width: 100%;
   max-width: 600px;
   padding: 60px;
   text-align: center;
-  background: linear-gradient(180deg, rgba(10, 15, 30, 0.6) 0%, rgba(5, 8, 20, 0.8) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  background: rgba(6, 10, 24, 0.45);
+  border: 1px solid rgba(5, 217, 232, 0.3);
+  border-top: 1px solid rgba(5, 217, 232, 0.6);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(5, 217, 232, 0.1);
+  border-radius: 16px;
+  animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .panel h1 {
   margin: 0 0 16px;
   font-size: 48px;
-  font-weight: 300;
+  font-weight: 800;
   letter-spacing: 12px;
   color: #fff;
   text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.panel h1.title-death {
+  color: #ff2a6d;
+  text-shadow: 0 0 20px rgba(255, 42, 109, 0.6);
+}
+
+.panel h1.title-victory {
+  color: #ffc44d;
+  text-shadow: 0 0 20px rgba(255, 196, 77, 0.6);
 }
 
 .panel p { 

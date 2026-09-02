@@ -147,8 +147,11 @@ export function hudSystem(engine, input) {
         }
       });
 
-      world.events.on('ui:message', ({ title, text, button, action }) => {
+      world.events.on('ui:message', ({ title, text, button, action, theme }) => {
         el.title.textContent = title;
+        // Limpiamos las clases anteriores y asignamos la del tema
+        el.title.className = theme ? `title-${theme}` : '';
+        
         el.text.textContent = text;
         el.button.hidden = !button;
         if (button) el.button.textContent = button;
@@ -157,6 +160,15 @@ export function hudSystem(engine, input) {
             currentLevel = pending.level;
             lvlDisplay.textContent = currentLevel;
         }
+        
+        // Reset animación forzando reflow para que vuelva a hacer el fadeSlideUp
+        const panel = el.overlay.querySelector('.panel') as HTMLElement;
+        if (panel) {
+          panel.style.animation = 'none';
+          void panel.offsetWidth; // force reflow
+          panel.style.animation = '';
+        }
+
         el.overlay.classList.remove('hidden');
         mainContent.classList.remove('hidden');
         settingsPanel.classList.add('hidden');
@@ -165,6 +177,7 @@ export function hudSystem(engine, input) {
 
       world.events.on('ui:pause', () => {
         el.title.textContent = 'SISTEMA EN PAUSA';
+        el.title.className = ''; // Tema default
         el.text.textContent = 'Ajustes, estado y núcleo de Lúmen.';
         el.button.textContent = 'REANUDAR';
         el.button.hidden = false;

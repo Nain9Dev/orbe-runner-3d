@@ -19,10 +19,12 @@ export function gameSystem() {
         if (world.state.collected >= world.state.totalOrbs) {
           world.state.status = 'levelup';
           timer = 1.6;
+          world.events.emit('game:levelup');
           world.events.emit('ui:message', {
             title: `¡Nivel ${world.state.level} superado!`,
             text: 'Preparando el siguiente...',
             button: null,
+            theme: 'victory'
           });
         }
       });
@@ -41,6 +43,7 @@ export function gameSystem() {
       });
 
       world.events.on('game:start', ({ level = 1, lives = CONFIG.player.lives } = {}) => {
+        world.state.timeScale = 1.0;
         buildLevel(world, level, { lives });
         world.events.emit('ui:hide');
       });
@@ -93,11 +96,19 @@ function damage(world, player, source = null) {
 
   if (player.player.lives <= 0) {
     world.state.status = 'gameover';
-    world.events.emit('ui:message', {
-      title: 'Fin de la partida',
-      text: `Llegaste al nivel ${world.state.level} con ${world.state.collected} orbes.`,
-      button: 'Reintentar',
-      action: { level: 1, lives: CONFIG.player.lives },
-    });
+    world.state.timeScale = 0.05; // SLOW MOTION EXTREMO
+
+    // Retrasar el menú de Game Over usando setTimeout para dar 
+    // protagonismo a la cámara lenta y a las partículas.
+    setTimeout(() => {
+      world.state.timeScale = 1.0; // Restaurar para animaciones de UI
+      world.events.emit('ui:message', {
+        title: 'Fin de la partida',
+        text: `Llegaste al nivel ${world.state.level} con ${world.state.collected} orbes.`,
+        button: 'Reintentar',
+        theme: 'death',
+        action: { level: 1, lives: CONFIG.player.lives },
+      });
+    }, 1200); // 1.2 segundos reales de "Matrix mode"
   }
 }
