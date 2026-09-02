@@ -6,10 +6,12 @@ A high-performance, 1-click endless runner 3D game playable directly in the brow
 
 ## Goals
 
-1. **Zero Latency Access**: Must run statically via GitHub Pages (`orbe.naindev.com`) with instant load times.
-2. **Raw WebGL Performance**: Achieve stable 60 FPS using raw Three.js primitives without the overhead of heavy game engines.
-3. **Spec Driven Development**: Maintain strict documentation and spec-driven iterations for any new features or architectural changes.
-4. **Static Modernization**: Migrate from Vanilla JS to TypeScript + Vite without compromising the static nature of the deployment.
+1. **Pure Fun & Engagement**: The game must be genuinely fun, engaging, and addictive. Gameplay feel (squash & stretch, particles, physics) comes first.
+2. **Zero Bug Tolerance**: We maintain a 100% bug-free mindset. Any bug that blocks gameplay or breaks the UI is a critical priority and must be fixed before any new features are merged.
+3. **Zero Latency Access**: Must run statically via GitHub Pages (`https://orbe.naindev.com/`) with instant load times.
+4. **Mobile & Cross-Device Playability**: The game must be fully playable in mobile browsers using touch controls and responsive UI, maintaining the 1-click accessibility everywhere.
+5. **Raw WebGL Performance**: Achieve stable 60 FPS using raw Three.js primitives without the overhead of heavy game engines.
+6. **Spec Driven Development**: Maintain strict documentation and spec-driven iterations for any new features or architectural changes.
 
 ## Non-Goals
 

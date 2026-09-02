@@ -1,6 +1,6 @@
 # Project constitution
 
-[Short project description]. [Tech stack overview, e.g. Python 3.12, FastAPI, Clean Architecture, Vue 3 presentation, PostgreSQL persistence].
+A high-performance, zero-latency 3D endless runner. Tech Stack: TypeScript, Vite, HTML/CSS, Three.js (Raw WebGL, no heavy game engines).
 
 This file is the operational contract for any AI agent working on this repository (Claude Code, Codex, Cursor, Antigravity or any other). Read `docs/README.md` before proposing anything.
 
@@ -55,14 +55,14 @@ The presentation layer must never import from the repository or domain directly 
 
 ## Stack
 
-Locked unless an approved ADR says otherwise: [Define specific stack, e.g. Python 3.12, FastAPI, SQLAlchemy 2.0 async, Pydantic v2, Vue 3, pytest + Hypothesis].
+Locked unless an approved ADR says otherwise: TypeScript, Vite for bundling, Vanilla DOM API for UI (no React/Vue), Three.js for rendering, Web Audio API for sound.
 
 Do not introduce frameworks, services or dependencies as a side effect of another task.
 
 ## Quality gates
 
 - Tests, linting and type checks run in CI on every push (`.github/workflows/ci.yml`). A red pipeline blocks the task that broke it.
-- Minimum coverage on domain and service logic: [e.g. 80%].
+- Zero Bug Policy: The game must remain 100% playable with zero blocking bugs on the main branch. Any bug fixing takes precedence over new features.
 - Dependencies: prefer FOSS with permissive licenses; record any copyleft or paid dependency as an ADR before adding it.
 - Never write real personal data into fixtures, tests or seed data.
 - Every released change is recorded in `docs/90-changelog.md`.
@@ -79,7 +79,7 @@ Do not introduce frameworks, services or dependencies as a side effect of anothe
 Everything in this repository is written in English: code, identifiers, folder and file names, branches, commit messages, comments, docstrings, documentation, tests, fixtures, logs, schemas, migrations and configuration.
 
 Two exceptions:
-- End-user facing strings use the product locale ([specify, e.g. Spanish]).
+- End-user facing strings use the product locale (Spanish).
 - Local legal and tax terms with no exact English equivalent (e.g. `NIF`, `IRPF`) keep their original form as values or constants, with an English comment explaining them.
 
 ## Commits
