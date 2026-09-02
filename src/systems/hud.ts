@@ -11,6 +11,7 @@ export function hudSystem(engine, input) {
     score: document.getElementById('hud-score'),
     lives: document.getElementById('hud-lives'),
     fps: document.getElementById('hud-fps'),
+    combo: document.getElementById('hud-combo'),
     overlay: document.getElementById('overlay'),
     title: document.getElementById('overlay-title'),
     text: document.getElementById('overlay-text'),
@@ -199,6 +200,18 @@ export function hudSystem(engine, input) {
       el.level.textContent = 'Nivel ' + world.state.level;
       if (engine.fps !== undefined) {
         el.fps.textContent = `${engine.fps} FPS`;
+      }
+      
+      // Mostrar Combo
+      if (world.state.combo > 1) {
+        if (el.combo) {
+          el.combo.textContent = `COMBO x${world.state.combo}`;
+          el.combo.style.display = 'block';
+          const scale = 1.0 + (world.state.combo * 0.05) + Math.sin(Date.now() / 100) * 0.1;
+          el.combo.style.transform = `scale(${Math.min(scale, 1.5)})`;
+        }
+      } else {
+        if (el.combo) el.combo.style.display = 'none';
       }
       
       const powerupEl = document.getElementById('hud-powerup');

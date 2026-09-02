@@ -59,6 +59,19 @@ export class Input {
       setTimeout(() => this.virtualKeys.delete('Space'), 50);
     };
 
+    const triggerDash = () => {
+      this.virtualKeys.add('ShiftLeft');
+      setTimeout(() => this.virtualKeys.delete('ShiftLeft'), 50);
+    };
+
+    const dashBtn = document.getElementById('touch-dash-btn');
+    if (dashBtn) {
+      this._bind(dashBtn, 'touchstart', (e: TouchEvent) => {
+        e.preventDefault();
+        triggerDash();
+      }, { passive: false });
+    }
+
     // Botón de Salto explícito
     this._bind(jumpBtn, 'touchstart', (e: TouchEvent) => {
       e.preventDefault();

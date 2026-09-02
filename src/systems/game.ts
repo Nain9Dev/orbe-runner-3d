@@ -16,6 +16,10 @@ export function gameSystem() {
     init(world) {
       world.events.on('orb:collected', ({ value }) => {
         world.state.collected += value;
+        // Sistema de Combo
+        world.state.combo = (world.state.combo || 0) + 1;
+        world.state.comboTimer = 3.0; // 3 segundos para mantener el combo
+        
         if (world.state.collected >= world.state.totalOrbs) {
           world.state.status = 'levelup';
           timer = 1.6;
@@ -44,12 +48,23 @@ export function gameSystem() {
 
       world.events.on('game:start', ({ level = 1, lives = CONFIG.player.lives } = {}) => {
         world.state.timeScale = 1.0;
+        world.state.combo = 0;
+        world.state.comboTimer = 0;
         buildLevel(world, level, { lives });
         world.events.emit('ui:hide');
       });
     },
 
     update(world, dt) {
+      if (world.state.status === 'playing') {
+        if (world.state.comboTimer > 0) {
+          world.state.comboTimer -= dt;
+          if (world.state.comboTimer <= 0) {
+            world.state.combo = 0; // Pierdes el combo
+          }
+        }
+      }
+
       if (world.state.status !== 'levelup') return;
       timer -= dt;
       if (timer <= 0) {

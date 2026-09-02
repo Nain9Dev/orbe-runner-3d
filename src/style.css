@@ -480,31 +480,18 @@ button {
   transition: transform 0.05s ease-out; /* suavizado al soltar */
 }
 
-#touch-jump-btn {
-  position: absolute;
-  bottom: 50px;
-  right: 50px;
-  width: 80px;
-  height: 80px;
+#touch-jump-btn, #touch-dash-btn {
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: rgba(6, 10, 24, 0.5);
-  border: 2px solid rgba(5, 217, 232, 0.6);
-  color: var(--cyan);
-  font-family: 'Inter', sans-serif;
-  font-size: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 24px;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  pointer-events: auto;
-  box-shadow: inset 0 0 15px rgba(5, 217, 232, 0.1), 0 0 20px rgba(5, 217, 232, 0.3);
+  backdrop-filter: blur(4px);
   user-select: none;
-  -webkit-user-select: none;
-  z-index: 20;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  transition: all 0.1s ease;
-}
-
 #touch-jump-btn:active {
   background: rgba(5, 217, 232, 0.3);
   transform: scale(0.9);

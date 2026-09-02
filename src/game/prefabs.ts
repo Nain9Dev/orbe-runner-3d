@@ -36,6 +36,7 @@ const GEO = {
 const MAT = {
   ground: new THREE.MeshStandardMaterial({ color: 0x01020a, roughness: 0.1, metalness: 0.8 }), // Suelo reflectante
   platform: new THREE.MeshStandardMaterial({ color: 0x170321, emissive: 0xff2a6d, emissiveIntensity: 0.15, roughness: 0.3, metalness: 0.8 }), // Plataformas de cristal oscuro con brillo magenta
+  crumbling_platform: new THREE.MeshStandardMaterial({ color: 0x2a0505, emissive: 0xff3b00, emissiveIntensity: 0.4, roughness: 0.5, metalness: 0.5 }), // Naranja resplandeciente
   wall: new THREE.MeshStandardMaterial({ color: 0x010105, roughness: 0.9, metalness: 0.2 }),
 };
 
@@ -155,12 +156,24 @@ definePrefab('orb', ({ position = v3(), value = 1 } = {}) => {
   };
 });
 
-definePrefab('platform', ({ position = v3(), size = v3(6, 1, 6) } = {}) => ({
-  tag: 'platform',
-  transform: { position: position.clone(), yaw: 0 },
-  solid: { size: size.clone() },
-  render: { mesh: mesh(GEO.box, MAT.platform, size) },
-}));
+definePrefab('platform', ({ position = v3(), size = v3(5, 1, 5) }) => {
+  return {
+    tag: 'platform',
+    transform: { position: position.clone(), yaw: 0 },
+    solid: { size: size.clone() },
+    render: { mesh: mesh(GEO.box, MAT.platform, size) },
+  };
+});
+
+definePrefab('crumbling_platform', ({ position = v3(), size = v3(5, 1, 5) }) => {
+  return {
+    tag: 'crumbling_platform',
+    transform: { position: position.clone(), yaw: 0 },
+    solid: { size: size.clone() },
+    render: { mesh: mesh(GEO.box, MAT.crumbling_platform, size) },
+    crumbling: { state: 'idle', timer: 1.5 } // 1.5 segundos hasta caer
+  };
+});
 
 definePrefab('ground', ({ size = CONFIG.world.arenaSize } = {}) => {
   const box = v3(size, 1, size);

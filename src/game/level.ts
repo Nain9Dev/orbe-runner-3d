@@ -92,11 +92,16 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
     }
     
     const size = new THREE.Vector3(w, 0.8, d);
-    spawn(world, 'platform', { position, size });
-    platforms.push({ position, size });
+    // 30% de las plataformas a partir del nivel 3 son inestables (excepto la primera)
+    const isCrumbling = i > 0 && n >= 3 && random() < 0.3;
+    const prefabName = isCrumbling ? 'crumbling_platform' : 'platform';
+    
+    spawn(world, prefabName, { position, size });
+    platforms.push({ position, size, isCrumbling });
     
     // Si la plataforma es muy alta o por azar, poner un Bounce Pad para ayudar
-    if (i > 0 && (position.y > 4.5 || random() < 0.5)) {
+    // Las plataformas inestables no llevan bounce pad para aumentar la tensión
+    if (!isCrumbling && i > 0 && (position.y > 4.5 || random() < 0.5)) {
       spawn(world, 'bounce_pad', {
         position: new THREE.Vector3(position.x, position.y + 0.4, position.z)
       });

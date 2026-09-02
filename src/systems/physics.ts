@@ -68,6 +68,24 @@ export function physicsSystem() {
           }
         }
       }
+
+      // 3. Actualizar Plataformas Inestables
+      for (const s of solids) {
+        if (s.crumbling && s.crumbling.state === 'crumbling') {
+          s.crumbling.timer -= dt;
+          
+          // Efecto visual: parpadeo o hundimiento ligero
+          if (s.render && s.render.mesh) {
+            // Vibra ligeramente o cambia el emisivo
+            const m = s.render.mesh;
+            m.position.y += (Math.random() - 0.5) * 0.05;
+          }
+
+          if (s.crumbling.timer <= 0) {
+            world.destroy(s);
+          }
+        }
+      }
     },
   };
 }
@@ -175,6 +193,11 @@ function resolveSphereBox(bodyEntity, solidEntity) {
     if (solidEntity.bounce) {
       body.velocity.y = solidEntity.bounce.force;
       body.grounded = false; // Dejamos de estar en el suelo inmediatamente
+    }
+    
+    // Si pisamos una plataforma inestable, activar contador
+    if (solidEntity.crumbling && solidEntity.crumbling.state === 'idle') {
+      solidEntity.crumbling.state = 'crumbling';
     }
   }
 }

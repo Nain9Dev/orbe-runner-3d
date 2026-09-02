@@ -21,6 +21,7 @@ export function playerSystem(input) {
 
       const { body, transform } = e;
       if (e.player.invulnerable > 0) e.player.invulnerable -= dt;
+      if (e.player.dashCooldown > 0) e.player.dashCooldown -= dt;
 
       // Ejes de entrada en el espacio de la cámara.
       let x = (input.down('KeyD', 'ArrowRight') ? 1 : 0) - (input.down('KeyA', 'ArrowLeft') ? 1 : 0);
@@ -40,10 +41,10 @@ export function playerSystem(input) {
       
       const moveLenSq = move.lengthSq();
       if (moveLenSq > 0) {
-        // En lugar de normalizar a 1 siempre, limitamos a la longitud real del joystick (máx 1)
-        // Esto permite a Lúmen caminar despacio
         const intensity = Math.min(Math.sqrt(moveLenSq), 1.0);
-        move.normalize().multiplyScalar(CONFIG.player.speed * intensity);
+        const combo = world.state.combo || 0;
+        const comboMultiplier = 1.0 + Math.min(combo * 0.05, 0.3); // +5% speed per combo, max +30%
+        move.normalize().multiplyScalar(CONFIG.player.speed * intensity * comboMultiplier);
         transform.yaw = Math.atan2(move.x, move.z);
       }
 
@@ -73,6 +74,19 @@ export function playerSystem(input) {
         body.grounded = false;
         e.player.coyote = 0; // Consume el salto
         world.events.emit('player:jump', e);
+      }
+
+      // Mecánica de Dash (Acelerón)
+      if (input.down('ShiftLeft', 'ShiftRight') && (e.player.dashCooldown ?? 0) <= 0 && moveLenSq > 0) {
+        e.player.dashCooldown = 1.5; // 1.5s cooldown
+        // Impulso masivo en la dirección a la que miramos (ignorando velocidad previa en XZ para más control)
+        const dashForce = 35; 
+        body.velocity.x = Math.sin(transform.yaw) * dashForce;
+        body.velocity.z = Math.cos(transform.yaw) * dashForce;
+        // Evitar gravedad si dasheamos en el aire momentáneamente? (Opcional, de momento solo XZ)
+        body.velocity.y = Math.max(body.velocity.y, 2.0); // Pequeño impulso vertical
+        
+        world.events.emit('player:dash', e);
       }
     },
   };
