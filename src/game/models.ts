@@ -160,7 +160,7 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
   const face = new THREE.Group();
   body.add(face);
 
-  const visorMat = new THREE.MeshStandardMaterial({
+  const visorMat = new THREE.MeshPhysicalMaterial({
     color: 0x020510, roughness: 0.1, metalness: 0.9, clearcoat: 1
   });
   const visor = new THREE.Mesh(

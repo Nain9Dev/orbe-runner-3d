@@ -35,13 +35,19 @@ export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
   spawn(world, 'ground', { size });
   const h = CONFIG.world.wallHeight;
   const t = 1;
+  const bridgeWidth = 6;
+  const frontWallSegWidth = Math.max(0, (size - bridgeWidth) / 2);
   const walls = [
-    { pos: [0, h / 2, -half], size: [size + t, h, t] },
+    // Muro frontal con apertura para el puente inicial:
+    { pos: [-(bridgeWidth + frontWallSegWidth) / 2, h / 2, -half], size: [frontWallSegWidth, h, t] },
+    { pos: [(bridgeWidth + frontWallSegWidth) / 2, h / 2, -half], size: [frontWallSegWidth, h, t] },
+    // Muro trasero (sur) y laterales (oeste y este):
     { pos: [0, h / 2, half], size: [size + t, h, t] },
     { pos: [-half, h / 2, 0], size: [t, h, size + t] },
     { pos: [half, h / 2, 0], size: [t, h, size + t] },
   ];
   for (const w of walls) {
+    if (w.size[0] <= 0) continue;
     spawn(world, 'wall', {
       position: new THREE.Vector3(...w.pos),
       size: new THREE.Vector3(...w.size),

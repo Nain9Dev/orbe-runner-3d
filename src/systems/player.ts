@@ -48,14 +48,27 @@ export function playerSystem(input) {
         transform.yaw = Math.atan2(move.x, move.z);
       }
 
-      // En el aire el control es parcial.
-      // La aceleración se equilibra con la fricción/arrastre de physics.ts
-      // Terminal Velocity (V) = Aceleración (A) / Fricción (F)
-      const control = body.grounded ? 1 : (CONFIG.player.airControl * 0.5); // Reducir control aéreo
-      const accelFactor = body.grounded ? (body.friction ?? 12) : (body.drag ?? 1);
-      
-      body.velocity.x += move.x * accelFactor * control * dt;
-      body.velocity.z += move.z * accelFactor * control * dt;
+      // En el suelo: aceleración inmediata regulada por fricción.
+      // En el aire: maniobrabilidad ágil proporcional a CONFIG.player.airControl sin estancarse.
+      const friction = body.friction ?? 12;
+      if (body.grounded) {
+        body.velocity.x += move.x * friction * dt;
+        body.velocity.z += move.z * friction * dt;
+      } else {
+        const airControl = CONFIG.player.airControl;
+        if (moveLenSq > 0) {
+          body.velocity.x += move.x * friction * airControl * dt;
+          body.velocity.z += move.z * friction * airControl * dt;
+
+          const horizSpeedSq = body.velocity.x * body.velocity.x + body.velocity.z * body.velocity.z;
+          const maxSpeed = Math.max(CONFIG.player.speed, Math.sqrt(moveLenSq));
+          if (horizSpeedSq > maxSpeed * maxSpeed) {
+            const currentSpeed = Math.sqrt(horizSpeedSq);
+            body.velocity.x = (body.velocity.x / currentSpeed) * maxSpeed;
+            body.velocity.z = (body.velocity.z / currentSpeed) * maxSpeed;
+          }
+        }
+      }
 
       // Aviso de aterrizaje: lo usan las partículas de polvo.
       if (body.grounded && !wasGrounded) world.events.emit('player:landed', e);

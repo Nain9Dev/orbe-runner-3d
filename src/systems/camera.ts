@@ -49,10 +49,7 @@ export function cameraSystem(input) {
         target.z + Math.cos(yaw) * d,
       );
 
-      // La cámara no sale de la arena: evita atravesar los muros.
-      const limit = CONFIG.world.arenaSize / 2 - 1.5;
-      desired.x = THREE.MathUtils.clamp(desired.x, -limit, limit);
-      desired.z = THREE.MathUtils.clamp(desired.z, -limit, limit);
+      // La cámara mantiene una altura mínima sobre el suelo para evitar atravesarlo.
       desired.y = Math.max(desired.y, 1.2);
 
       // Efecto Time Warp (FOV Shift)

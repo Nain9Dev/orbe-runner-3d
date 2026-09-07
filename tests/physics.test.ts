@@ -73,4 +73,17 @@ describe('Physics System', () => {
 
     expect(maxVelocity).toBe(15);
   });
+
+  it('should not clamp player movement at z < -20 when advancing along the runner track', () => {
+    const player = world.spawn({
+      tag: 'player',
+      transform: { position: new THREE.Vector3(0, 2, -18), yaw: 0 },
+      body: { velocity: new THREE.Vector3(0, 0, -14), radius: 0.6, mass: 1, grounded: false, bounciness: 0, friction: 12, drag: 0 }
+    });
+
+    world.update(1.0);
+
+    // If clamped to -limit = -(40/2 - 0.6) = -19.4, player will fail this assertion
+    expect(player.transform.position.z).toBeLessThan(-25);
+  });
 });

@@ -37,10 +37,12 @@ const GEO = {
 let NOISE_TEXTURE = null;
 function getNoiseTexture() {
   if (NOISE_TEXTURE) return NOISE_TEXTURE;
+  if (typeof document === 'undefined') return null;
   const size = 256;
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
+  if (!canvas || !canvas.getContext) return null;
   const ctx = canvas.getContext('2d');
+  if (!ctx || typeof (ctx as any).createImageData !== 'function') return null;
   const imgData = ctx.createImageData(size, size);
   for (let i = 0; i < imgData.data.length; i += 4) {
     const val = Math.random() * 255;
