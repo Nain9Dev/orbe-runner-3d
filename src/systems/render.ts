@@ -256,6 +256,19 @@ export function renderSystem(canvas) {
       }
       vfx.instanceMatrix.needsUpdate = true;
       
+      /*
+       * The environment breathes with the music (REQ-025.14).
+       *
+       * Bounded on purpose: bloom is the one effect that can hide a platform
+       * edge, and platform edges are how the player knows where to land. The
+       * pulse is a fraction added to a fixed base, never a multiplier, so the
+       * worst case is a known constant rather than whatever the mix is doing.
+       */
+      const beat = world.state.beat;
+      if (beat && !CONFIG.graphics.lowQuality) {
+        bloomPass.strength = 0.35 + (beat.intensity ?? 0) * 0.18 + (beat.pulse ?? 0) * 0.12;
+      }
+
       // Calidad gráfica. Antes esto era un `import()` dinámico *dentro del bucle
       // de dibujado*: una promesa nueva por fotograma, resuelta un fotograma
       // tarde, sólo para leer dos banderas de un módulo ya cargado.

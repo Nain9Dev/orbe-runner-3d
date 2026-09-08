@@ -91,8 +91,18 @@
       <div class="reticle-dot"></div>
     </div>
 
+    <!-- Marcas de borde: avisos fuera de pantalla y dirección del daño -->
+    <div id="hud-compass" class="compass" aria-hidden="true"></div>
+
     <!-- Avisos transitorios -->
     <div id="hud-toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Rótulo de entrada al Ciclo -->
+    <div id="hud-cycle-card" class="cycle-card" hidden aria-hidden="true">
+      <div class="cycle-card-kicker">CICLO</div>
+      <div class="cycle-card-number" id="hud-cycle-number">1</div>
+      <div class="cycle-card-name" id="hud-cycle-name">Neón</div>
+    </div>
 
     <!-- Inferior centro: INTEGRIDAD DEL NÚCLEO -->
     <div class="hud-bottom-center">
@@ -127,7 +137,9 @@
         <div class="control-key"><span>ESC</span> PAUSA</div>
       </div>
 
-      <p class="panel-hint">El Impulso atraviesa a las Sombras frágiles y las fractura.</p>
+      <dl id="run-summary" class="run-summary" hidden></dl>
+
+      <p class="panel-hint" id="panel-hint">El Impulso atraviesa a las Sombras frágiles y las fractura.</p>
 
       <div class="panel-actions">
         <button id="start" class="btn-primary">JUGAR</button>
@@ -172,6 +184,18 @@
       <div class="setting-group setting-row">
         <label for="btn-shake">Sacudida de cámara</label>
         <button id="btn-shake" class="btn-toggle active" aria-pressed="true">ON</button>
+      </div>
+
+      <div class="setting-group">
+        <label for="vol-music">Música <span class="setting-value" id="vol-music-value">70%</span></label>
+        <input id="vol-music" class="slider" type="range" min="0" max="100" value="70"
+               aria-label="Volumen de música" />
+      </div>
+
+      <div class="setting-group">
+        <label for="vol-sfx">Efectos <span class="setting-value" id="vol-sfx-value">90%</span></label>
+        <input id="vol-sfx" class="slider" type="range" min="0" max="100" value="90"
+               aria-label="Volumen de efectos" />
       </div>
 
       <button id="btn-save" class="btn-primary full">VOLVER</button>

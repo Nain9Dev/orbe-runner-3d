@@ -409,6 +409,169 @@ html, body {
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
 }
 
+/* ------------------- Brújula: avisos y dirección del daño ------------------
+   Una marca por cosa importante que no está en pantalla. Es la última pieza del
+   contrato de justicia: un telegrafiado que ocurre detrás de la cámara sigue
+   siendo un telegrafiado invisible. Contrato completo en `docs/23-interface.md`.
+   ------------------------------------------------------------------------- */
+
+.compass {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  --compass-radius: min(34vw, 32vh);
+  pointer-events: none;
+}
+
+.compass-mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  display: none;
+  transition: opacity 0.12s linear;
+}
+
+.compass-arrow {
+  display: block;
+  width: 0;
+  height: 0;
+  transform: scale(var(--mark-scale, 1));
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 17px solid var(--amber);
+  filter: drop-shadow(0 0 7px var(--amber));
+}
+
+.compass-mark[data-kind="damage"] .compass-arrow {
+  border-left-color: var(--accent);
+  filter: drop-shadow(0 0 9px var(--accent-glow));
+}
+
+/* ----------------------------- Rótulo de Ciclo ---------------------------- */
+
+.cycle-card {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  animation: cycleCard 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+.cycle-card[hidden] { display: none; }
+
+.cycle-card-kicker {
+  font-size: 11px;
+  letter-spacing: 10px;
+  color: var(--dim);
+}
+
+.cycle-card-number {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 76px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 30px var(--cyan);
+}
+
+.cycle-card-name {
+  font-size: 13px;
+  letter-spacing: 8px;
+  color: var(--cyan);
+}
+
+@keyframes cycleCard {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.9); letter-spacing: 0; }
+  18%  { opacity: 1; transform: translateX(-50%) scale(1); }
+  72%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) scale(1.04); }
+}
+
+/* ----------------------------- Resumen de run ----------------------------- */
+
+.run-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 18px;
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.run-summary[hidden] { display: none; }
+
+.run-summary dt {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  align-self: center;
+}
+
+.run-summary dd {
+  margin: 0;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  text-align: right;
+}
+
+/* -------------------------------- Deslizadores ---------------------------- */
+
+.setting-value {
+  float: right;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--cyan);
+  letter-spacing: 0;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+  cursor: pointer;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+  cursor: pointer;
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 4px;
+}
+
 /* --------------------------------- Avisos -------------------------------- */
 
 .toasts {
@@ -707,15 +870,29 @@ html, body {
   font-weight: 800;
   letter-spacing: 10px;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #fff, #9fd8ff);
+  background-image: linear-gradient(180deg, #fff, #9fd8ff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   filter: drop-shadow(0 0 22px rgba(5, 217, 232, 0.45));
 }
 
-.panel h1.title-death   { background: linear-gradient(180deg, #fff, #ff5c7c); filter: drop-shadow(0 0 22px var(--accent-glow)); }
-.panel h1.title-victory { background: linear-gradient(180deg, #fff, #9dff8a); filter: drop-shadow(0 0 22px rgba(57, 255, 20, 0.4)); }
+/*
+   `background-image`, never the `background` shorthand.
+   The shorthand resets `background-clip` to `border-box`, which undoes the
+   `background-clip: text` on the rule above — and a gradient title with no text
+   clip renders as a solid coloured rectangle where the words should be. Every
+   game-over screen showed that block instead of "El núcleo se ha apagado".
+*/
+.panel h1.title-death {
+  background-image: linear-gradient(180deg, #fff, #ff5c7c);
+  filter: drop-shadow(0 0 22px var(--accent-glow));
+}
+
+.panel h1.title-victory {
+  background-image: linear-gradient(180deg, #fff, #9dff8a);
+  filter: drop-shadow(0 0 22px rgba(57, 255, 20, 0.4));
+}
 
 .panel p {
   margin: 0 0 24px;
@@ -1075,6 +1252,9 @@ button {
 
   .controls-grid { display: none; }
   .registry { max-height: 40vh; }
+  .compass { --compass-radius: min(38vw, 30vh); }
+  .cycle-card-number { font-size: 52px; }
+  .run-summary dd { font-size: 16px; }
 }
 
 /* Pantallas muy bajas en horizontal: el HUD se comprime antes que solaparse. */

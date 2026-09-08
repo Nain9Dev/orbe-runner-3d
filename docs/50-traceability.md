@@ -3,7 +3,7 @@
 Every requirement and the test that proves it. **A requirement with no passing test is not
 done**, whatever the code says.
 
-Last full run: `npm test` → **9 files, 145 tests, all passing.**
+Last full run: `npm test` → **11 files, 200 tests, all passing.**
 
 ## Physics — `tests/physics.test.ts`
 
@@ -90,6 +90,29 @@ Last full run: `npm test` → **9 files, 145 tests, all passing.**
 | :--- | :--- | :--- |
 | REQ-004 | `should spawn entities with incrementing IDs`, `should find entities by components`, `should destroy entities at the end of the frame`, `should execute systems sequentially` | unit |
 
+## Audio and reactivity — `tests/clock.test.ts`, `tests/score.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-025.06 | `gates the optional layers behind their thresholds`, `does not flap at a threshold boundary (hysteresis)` | unit |
+| REQ-025.07 | `rises with the Resonancia streak`, `rises as a Sombra closes in`, `rises as the Núcleo is worn down`, `lets no single input saturate the mix on its own`, `rises faster than it falls` | unit |
+| REQ-025.08 | `goes to the tension voicing at one layer, whatever else is true` | unit |
+| REQ-025.09 | `gives each palette tier its own key`, `maps Ciclo bands onto tiers`, `transposes a degree into a frequency inside the mode` | unit |
+| REQ-025.10 | `keeps the tempo inside eight per cent of the base` | unit |
+| REQ-025.11 | `advances one beat per half second at 120 BPM`, `rolls into the next bar after four beats`, `reports the sixteenth within the bar`, `pulses at the onset and decays before the next beat`, `accents the downbeat only` | unit |
+| REQ-025.12 | `treats the first advance as musical zero`, `resynchronises after a long gap`, `reports whether real audio is driving it`, `never runs backwards when the source does` | unit |
+| REQ-025.15 | `records the speed a landing cancelled`, `scales the recorded impact with the height of the fall`, `forgets the last landing once the body is airborne again` (`tests/physics.test.ts`) | integration |
+
+## Interface additions — `tests/hud.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-025.04 | `reports music and effects volume separately`, `starts at the configured volume when nothing has been saved`, `keeps the telegraph cues separable from the music` | unit |
+| REQ-025.25 | `draws one arrow per off-screen tell`, `never shows more than four at once, nearest to landing first`, `hides arrows again when nothing is telegraphing` | unit |
+| REQ-025.26 | `marks a damage bearing distinctly from a telegraph`, `ignores a nonsense bearing` | unit |
+| REQ-025.27 | `renders one row per statistic and replaces the hint line`, `stays hidden for an ordinary message` | unit |
+| REQ-025.28 | `names the Ciclo and its tier`, `covers every palette tier`, `hides on demand and degrades without a root` | unit |
+
 ## Not covered by an automated test
 
 Recorded honestly rather than claimed.
@@ -102,3 +125,7 @@ Recorded honestly rather than claimed.
 | REQ-024.40 (Escape pauses) | Needs a real key event through the window listener | Manual |
 | REQ-024.41 (keyboard menus) | Focus behaviour needs a real layout engine; jsdom reports every element as unrendered | Manual |
 | REQ-024.43 / REQ-024.44 (documentation) | Prose | Review against `docs/20-lore.md` §8 and `docs/22-game-design.md` |
+| REQ-025.01 – .03, .05 (audio graph) | jsdom has no Web Audio; a mock would assert the mock | Manual, in a browser: buses audible and separable, kick ducks the music, a blocked context plays silently |
+| REQ-025.13, .14 (beat-driven visuals) | Needs a renderer and an eye | Manual: verified with the clock advancing live at 131 BPM |
+| REQ-025.16 – .18 (footsteps, brightness, spatialisation) | Needs Web Audio and ears | Manual |
+| REQ-025.20 – .23 (model tells and trail) | Needs a renderer | Manual: screenshot mid-telegraph shows a tell on all four archetypes |

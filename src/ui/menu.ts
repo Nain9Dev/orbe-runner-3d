@@ -23,6 +23,8 @@ export interface MenuCallbacks {
   isPaused(): boolean;
   isPlaying(): boolean;
   requestPause(): void;
+  /** Volume changes have to reach the running audio graph, not just `CONFIG`. */
+  onAudio(settings: { muted?: boolean; musicVolume?: number; sfxVolume?: number }): void;
 }
 
 const KEYS = {
@@ -31,6 +33,8 @@ const KEYS = {
   mute: 'orbi_mute',
   gfx: 'orbi_gfx',
   shake: 'orbi_shake',
+  music: 'orbi_music',
+  sfx: 'orbi_sfx',
 };
 
 /** `localStorage` is unavailable in private modes and inside some embeds. */
@@ -59,6 +63,8 @@ export function createMenu(callbacks: MenuCallbacks) {
   const text = document.getElementById('overlay-text');
   const startBtn = document.getElementById('start') as HTMLButtonElement | null;
   const touch = document.getElementById('touch-controls');
+  const summary = document.getElementById('run-summary');
+  const hint = document.getElementById('panel-hint');
 
   const pending = { level: clampLevel(parseInt(readStore(KEYS.level, '1'), 10)) };
 
@@ -80,6 +86,7 @@ export function createMenu(callbacks: MenuCallbacks) {
   bindToggle('btn-sound', !savedMute, ['ON', 'OFF'], (on) => {
     CONFIG.audio.muted = !on;
     writeStore(KEYS.mute, String(!on));
+    callbacks.onAudio({ muted: !on });
   });
 
   bindToggle('btn-gfx', !savedGfx, ['ALTA', 'BAJA'], (on) => {
@@ -94,6 +101,25 @@ export function createMenu(callbacks: MenuCallbacks) {
 
   bindStepper('lvl-down', -1);
   bindStepper('lvl-up', +1);
+
+  // Music and SFX are separate on purpose: the telegraph cues are a fairness
+  // feature, so a player who wants the track quiet must not have to give them up.
+  const savedMusic = numberFrom(readStore(KEYS.music, ''), CONFIG.audio.musicVolume);
+  const savedSfx = numberFrom(readStore(KEYS.sfx, ''), CONFIG.audio.sfxVolume);
+  CONFIG.audio.musicVolume = savedMusic;
+  CONFIG.audio.sfxVolume = savedSfx;
+
+  bindSlider('vol-music', 'vol-music-value', savedMusic, (v) => {
+    CONFIG.audio.musicVolume = v;
+    writeStore(KEYS.music, String(v));
+    callbacks.onAudio({ musicVolume: v });
+  });
+
+  bindSlider('vol-sfx', 'vol-sfx-value', savedSfx, (v) => {
+    CONFIG.audio.sfxVolume = v;
+    writeStore(KEYS.sfx, String(v));
+    callbacks.onAudio({ sfxVolume: v });
+  });
 
   const colorButtons = Array.from(document.querySelectorAll<HTMLElement>('.color-btn'));
   for (const btn of colorButtons) {
@@ -166,7 +192,8 @@ export function createMenu(callbacks: MenuCallbacks) {
     pending,
 
     /** A titled message: level cleared, run over, and so on. */
-    message({ title: t, text: body, button, action, theme }: any) {
+    message({ title: t, text: body, button, action, theme, summary: rows }: any) {
+      renderSummary(rows);
       if (title) {
         title.textContent = t;
         title.className = theme ? `title-${theme}` : '';
@@ -189,6 +216,7 @@ export function createMenu(callbacks: MenuCallbacks) {
     },
 
     pause() {
+      renderSummary(null);
       if (title) {
         title.textContent = 'SISTEMA EN PAUSA';
         title.className = '';
@@ -225,6 +253,45 @@ export function createMenu(callbacks: MenuCallbacks) {
     btn.addEventListener('click', () => { on = !on; paint(); apply(on); });
   }
 
+  /**
+   * The end-of-run scoreboard (REQ-025.27). Hidden for every other message, and
+   * it takes the hint line's place so the panel does not grow a dead row.
+   */
+  function renderSummary(rows: Array<{ label: string; value: string }> | null | undefined) {
+    if (!summary) return;
+    if (!rows || rows.length === 0) {
+      summary.hidden = true;
+      summary.replaceChildren();
+      if (hint) hint.hidden = false;
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const row of rows) {
+      const dt = document.createElement('dt');
+      dt.textContent = row.label;
+      const dd = document.createElement('dd');
+      dd.textContent = row.value;
+      frag.append(dt, dd);
+    }
+    summary.replaceChildren(frag);
+    summary.hidden = false;
+    if (hint) hint.hidden = true;
+  }
+
+  function bindSlider(id: string, valueId: string, initial: number, apply: (v: number) => void) {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    const label = document.getElementById(valueId);
+    if (!input) return;
+    const paint = (v: number) => { if (label) label.textContent = `${Math.round(v * 100)}%`; };
+    input.value = String(Math.round(initial * 100));
+    paint(initial);
+    input.addEventListener('input', () => {
+      const v = Math.min(1, Math.max(0, Number(input.value) / 100));
+      paint(v);
+      apply(v);
+    });
+  }
+
   function bindStepper(id: string, delta: number) {
     document.getElementById(id)?.addEventListener('click', () => {
       pending.level = clampLevel(pending.level + delta);
@@ -257,6 +324,19 @@ function focusFirst(panel: HTMLElement | null | undefined) {
 function setChecked(btn: HTMLElement, on: boolean) {
   btn.classList.toggle('active', on);
   btn.setAttribute('aria-checked', String(on));
+}
+
+/**
+ * A stored volume, or the default when the store is empty or corrupt.
+ *
+ * The empty-string check is not paranoia: `Number('')` is **0**, which is
+ * finite and inside the valid range, so a first-time player with nothing saved
+ * would have started the game muted.
+ */
+function numberFrom(raw: string, fallback: number): number {
+  if (typeof raw !== 'string' || raw.trim() === '') return fallback;
+  const v = Number(raw);
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : fallback;
 }
 
 function clampLevel(n: number) {

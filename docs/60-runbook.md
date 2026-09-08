@@ -99,6 +99,25 @@ git push origin main
 The push redeploys the reverted state. There is no database and no migration, so a revert
 is complete by itself.
 
+### There is no sound
+
+Browsers only let an `AudioContext` start from a user gesture, and the game starts one
+when you press **JUGAR**. If it still fails, the game plays silently at full speed by
+design — no audio failure interrupts the simulation.
+
+```js
+GAME.world.state.audio     // { ready, muted, musicVolume, sfxVolume }
+GAME.world.state.beat.live // false when the clock is running without audio
+```
+
+`ready: false` means the context never started. `musicVolume: 0` means the slider is down.
+
+### The world stops pulsing
+
+`world.state.beat` should advance whether or not there is audio. If `beat.bar` is frozen
+while the game is running, the clock is not being advanced — check that the audio system
+is still registered.
+
 ### The game loads but nothing moves
 
 The loop is driven by `requestAnimationFrame`, which browsers throttle to zero in a
@@ -118,7 +137,8 @@ document.hidden          // true
 | Bundle size | ~675 kB (173 kB gzipped) | Almost entirely Three.js. Flagged as a follow-up in `specs/024-flow-and-feel/checklist.md` §4. |
 | Sombras per Ciclo | 30 | Hard cap. The contact solver is O(n²). |
 | Physics sub-steps | 4 per frame | Cap, so a stalled tab cannot spiral. |
-| Persistence | 5 `localStorage` keys | No backend, no accounts, no saved runs. |
+| Persistence | 7 `localStorage` keys | No backend, no accounts, no saved runs. |
+| Audio | Fully synthesised | No audio assets. A blocked `AudioContext` means silence, never a stall. |
 | Type checking | Not a CI gate | 451 pre-existing errors; see `docs/11-open-questions.md` OQ-002. |
 | Committed `dist/` | Tracked in git | Redundant now that CI builds it. Removing it is a separate decision. |
 

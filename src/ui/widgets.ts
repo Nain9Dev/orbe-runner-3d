@@ -255,3 +255,54 @@ export function createToasts(root: HTMLElement | null) {
     },
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Ciclo intro card                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Names of the four palette tiers, in order.
+ *
+ * The canonical list lives in the lore bible (`docs/20-lore.md` §8.2). It is
+ * repeated here rather than imported because the aural layer keeps its own copy
+ * for its own use and neither presentation layer may import the other — the same
+ * trade this codebase already makes for the integrity description.
+ */
+export const TIER_NAMES = ['Neón', 'Abismo', 'Radiación', 'Carmesí'];
+
+/**
+ * A brief card naming the Ciclo at the start of it (REQ-025.28).
+ *
+ * It exists because a generated level has no title screen and no landmarks: the
+ * player needs one moment that says "this is a new place" or every Ciclo blurs
+ * into the previous one. The animation is fire-and-forget CSS; restarting it
+ * means removing and re-adding the element to the flow.
+ */
+export function createCycleCard(
+  root: HTMLElement | null,
+  number: HTMLElement | null,
+  name: HTMLElement | null,
+) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  return {
+    show(level: number, tierName: string) {
+      if (!root) return;
+      if (number) number.textContent = String(level);
+      if (name) name.textContent = tierName ?? '';
+
+      root.hidden = false;
+      root.style.animation = 'none';
+      void root.offsetWidth;                 // restart the CSS animation
+      root.style.animation = '';
+
+      clearTimeout(timer);
+      timer = setTimeout(() => { root.hidden = true; }, 2400);
+    },
+
+    hide() {
+      clearTimeout(timer);
+      if (root) root.hidden = true;
+    },
+  };
+}

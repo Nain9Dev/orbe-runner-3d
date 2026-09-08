@@ -1,7 +1,10 @@
+import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { createIntegrityMeter } from '../ui/health.js';
 import { createDashRing, createComboDial, createProgress, createPowerupChip, createToasts } from '../ui/widgets.js';
 import { createScreenFx } from '../ui/screen.js';
+import { createCompass } from '../ui/compass.js';
+import { createCycleCard, TIER_NAMES } from '../ui/widgets.js';
 import { createMenu } from '../ui/menu.js';
 
 /**
@@ -57,6 +60,12 @@ export function hudSystem(engine, input) {
     document.getElementById('hud-powerup-time'),
   );
   const toasts = createToasts(document.getElementById('hud-toasts'));
+  const compass = createCompass(document.getElementById('hud-compass'));
+  const cycleCard = createCycleCard(
+    document.getElementById('hud-cycle-card'),
+    document.getElementById('hud-cycle-number'),
+    document.getElementById('hud-cycle-name'),
+  );
   const fx = createScreenFx();
 
   // Last written values, so the binder touches the DOM only on a real change.
@@ -82,6 +91,7 @@ export function hudSystem(engine, input) {
           world.state.status = 'paused';
           world.events.emit('ui:pause');
         },
+        onAudio: (settings) => world.events.emit('audio:settings', settings),
       });
 
       world.events.on('ui:message', (payload) => { toasts.clear(); menu.message(payload); });
@@ -89,7 +99,11 @@ export function hudSystem(engine, input) {
       world.events.on('ui:hide', () => { fx.reset(); menu.hide(); });
       world.events.on('ui:toast', ({ text, tone }) => toasts.push(text, tone));
 
-      world.events.on('player:damaged', ({ shielded, lost, critical }) => {
+      world.events.on('player:damaged', ({ shielded, lost, critical, from }) => {
+        // Point at whatever did it, so the lesson is available (REQ-025.26).
+        const bearing = screenBearing(world, from);
+        if (bearing !== null) compass.damage(bearing);
+
         if (shielded) {
           fx.shieldBreak();
           integrity.onShieldBreak();
@@ -104,7 +118,8 @@ export function hudSystem(engine, input) {
 
       world.events.on('level:built', ({ level }) => {
         toasts.clear();
-        toasts.push(`CICLO ${level}`, 'info');
+        compass.clear();
+        cycleCard.show(level, TIER_NAMES[Math.min(TIER_NAMES.length - 1, Math.floor((level - 1) / 3))]);
       });
 
       // The void is a distinct kind of setback and gets a distinct read: a blue
@@ -155,6 +170,69 @@ export function hudSystem(engine, input) {
 
       fx.setCritical(!!state.critical && state.status === 'playing');
       fx.setDashing(!!state.dashing);
+
+      compass.sync(state.status === 'playing' ? offscreenTells(world) : []);
     },
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Screen projection                                                           */
+/* -------------------------------------------------------------------------- */
+
+const projected = new THREE.Vector3();
+
+/**
+ * Screen-space bearing from the centre of the view to a world point.
+ *
+ * Returns radians in the CSS convention — 0 points right, positive turns
+ * clockwise — which is what the compass transform consumes directly.
+ *
+ * The awkward case is *behind* the camera. A point behind projects to a
+ * mirrored position, so an arrow drawn from it would point at exactly the wrong
+ * side of the screen. Flipping both axes for that case is the standard fix and
+ * the reason this is a function rather than three inline lines.
+ */
+function screenBearing(world, worldPos, requireOffscreen = false) {
+  const camera = world.state.three?.camera;
+  if (!camera || !worldPos) return null;
+
+  projected.set(worldPos.x, worldPos.y, worldPos.z).project(camera);
+  const behind = projected.z > 1;
+  const x = behind ? -projected.x : projected.x;
+  const y = behind ? -projected.y : projected.y;
+
+  if (requireOffscreen && !behind && Math.abs(x) <= 0.92 && Math.abs(y) <= 0.92) return null;
+
+  // NDC grows upwards, screen space grows downwards.
+  return Math.atan2(-y, x);
+}
+
+/**
+ * Every Sombra currently winding up that the player cannot see.
+ *
+ * This is the last hole in the fairness contract from ADR-010: the telegraph is
+ * guaranteed, it is now drawn on the model, and this covers the case where the
+ * model is behind the camera. `fsm.duration` is recorded by the enemy system, so
+ * the urgency here is the same number the model is animating with.
+ */
+function offscreenTells(world) {
+  const out = [];
+  for (const e of world.find('enemy', 'transform', 'fsm')) {
+    if (!e.fsm.telegraph) continue;
+    const total = e.fsm.duration;
+    if (!total || total <= 0) continue;
+
+    const bearing = screenBearing(world, e.transform.position, true);
+    if (bearing === null) continue;
+
+    const left = Math.max(0, e.fsm.timer ?? 0);
+    out.push({
+      angle: bearing,
+      urgency: Math.min(1, Math.max(0, 1 - left / total)),
+      kind: 'telegraph',
+      id: e.id,
+    });
+  }
+  return out;
 }

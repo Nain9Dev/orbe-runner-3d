@@ -48,6 +48,7 @@ export function gameSystem() {
       // point: the aggressive line and the collecting line are the same line.
       world.events.on('enemy:shattered', ({ at }) => {
         world.state.score = (world.state.score ?? 0) + 5;
+        world.state.shattered = (world.state.shattered ?? 0) + 1;
         bumpResonance(world, 1);
         world.events.emit('ui:toast', { text: 'SOMBRA FRACTURADA', tone: 'good', at });
       });
@@ -85,6 +86,8 @@ export function gameSystem() {
           comboWindow: 0,
           score: 0,
           shield: false,
+          shattered: 0,
+          bestCombo: 0,
         });
         world.state.gameOverIn = 0;
         buildLevel(world, level, { lives });
@@ -143,6 +146,7 @@ function bumpResonance(world, steps) {
   world.state.combo = before + steps;
   world.state.comboTimer = RESONANCE_WINDOW;
   world.state.comboWindow = 1;
+  world.state.bestCombo = Math.max(world.state.bestCombo ?? 0, world.state.combo);
 
   const milestone = Math.floor(world.state.combo / 5);
   if (milestone > Math.floor(before / 5) && world.state.combo >= 5) {
@@ -211,7 +215,10 @@ function damage(world, player, source = null) {
     player.player.buff = null;
     world.state.shield = false;
     player.player.invulnerable = CONFIG.player.respawnInvuln;
-    world.events.emit('player:damaged', { player, at: hitAt, shielded: true, lost: 0 });
+    world.events.emit('player:damaged', {
+      player, at: hitAt, from: source?.transform?.position?.clone?.() ?? null,
+      shielded: true, lost: 0,
+    });
     world.events.emit('ui:toast', { text: 'ESCUDO ROTO', tone: 'warn' });
     return;
   }
@@ -230,6 +237,9 @@ function damage(world, player, source = null) {
   world.events.emit('player:damaged', {
     player,
     at: hitAt,
+    // Where the hit came *from*, so the HUD can point at it (REQ-025.26).
+    // `at` is where Lúmen was standing, which answers a different question.
+    from: source?.transform?.position?.clone?.() ?? null,
     shielded: false,
     lost: result.lost,
     critical: isCritical(result.state),
@@ -278,9 +288,17 @@ function showGameOver(world) {
   world.state.timeScale = 1;
   world.events.emit('ui:message', {
     title: 'El núcleo se ha apagado',
-    text: `Ciclo ${world.state.level} · ${world.state.score ?? 0} puntos de luz recuperados.`,
+    text: `Lúmen se dispersó en el Ciclo ${world.state.level}.`,
     button: 'Reintentar',
     theme: 'death',
     action: { level: 1, lives: CONFIG.player.lives },
+    // A run deserves a scoreboard. Without one there is nothing to beat, and
+    // nothing to beat is a short-lived game (REQ-025.27).
+    summary: [
+      { label: 'Ciclo alcanzado', value: String(world.state.level) },
+      { label: 'Luz recuperada', value: String(world.state.score ?? 0) },
+      { label: 'Mejor Resonancia', value: `x${world.state.bestCombo ?? 0}` },
+      { label: 'Sombras fracturadas', value: String(world.state.shattered ?? 0) },
+    ],
   });
 }

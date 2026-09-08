@@ -343,8 +343,51 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
   let flipAng = 0; // Ángulo de voltereta
   let flipVel = 0; // Velocidad de rotación de la voltereta
 
+  /* ---------------------------- motion trail ----------------------------
+   * A ribbon of fading copies behind Lúmen (REQ-025.23). Two jobs:
+   *
+   *   - **Speed you can see.** The dash covers 6.8 units in a fifth of a second;
+   *     without a trail that reads as a teleport rather than as movement.
+   *   - **Where you just were.** On a precision jump the ghost of the take-off
+   *     point is a genuine aid, not decoration.
+   *
+   * Fixed pool, positions written in world space each step. Nothing is created
+   * or destroyed while the game runs.
+   * ------------------------------------------------------------------- */
+  const TRAIL = 10;
+  const trailMat = new THREE.SpriteMaterial({
+    map: glowTexture(), color: tint.clone(), transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const trail = [];
+  for (let i = 0; i < TRAIL; i++) {
+    const ghost = new THREE.Sprite(trailMat.clone());
+    ghost.visible = false;
+    // Parented to the scene root, not to the group: a trail that followed the
+    // avatar would defeat the entire point of a trail.
+    trail.push({ sprite: ghost, life: 0, attached: false });
+  }
+  let trailTimer = 0;
+
   return {
     group,
+
+    /** The ghosts live in world space, so they need adopting by the scene once. */
+    attachTrail(scene) {
+      for (const g of trail) {
+        if (g.attached) continue;
+        scene.add(g.sprite);
+        g.attached = true;
+      }
+    },
+
+    detachTrail(scene) {
+      for (const g of trail) {
+        if (!g.attached) continue;
+        scene.remove(g.sprite);
+        g.attached = false;
+      }
+    },
 
     /** Eventos del juego: el modelo decide cómo se pone. */
     react(kind) {
@@ -369,14 +412,40 @@ export function createOrbi({ radius: r = 0.6, color = 0x6ee7ff, tier = 0 } = {})
       cheer = Math.max(0, cheer - dt);
       dizzy = Math.max(0, dizzy - dt);
 
+      /* ------------------------------ trail ------------------------------ */
+
+      const dashing = !!s.dashing;
+      // Ghosts are dropped by distance travelled, and much more densely during
+      // an Impulso, which is when the eye most needs the help.
+      trailTimer += dt * speed * (dashing ? 5.5 : 1);
+      if (trailTimer > 1 && (speed > 6 || dashing)) {
+        trailTimer = 0;
+        let oldest = trail[0];
+        for (const g of trail) if (g.life < oldest.life) oldest = g;
+        oldest.life = 1;
+        oldest.sprite.position.copy(group.position);
+        oldest.sprite.position.y += r * 0.1;
+        oldest.sprite.material.color.copy(tint);
+      }
+      for (const g of trail) {
+        if (g.life <= 0) { g.sprite.visible = false; continue; }
+        g.life = Math.max(0, g.life - dt * (dashing ? 4.2 : 3));
+        g.sprite.visible = true;
+        g.sprite.material.opacity = g.life * g.life * (dashing ? 0.5 : 0.26);
+        g.sprite.scale.setScalar(r * (1.6 + (1 - g.life) * 1.4));
+      }
+
       /* Núcleo y luz: laten, y más rápido si corres. */
       const beat = Math.sin(t * (3.2 + speed * 0.25));
+      // …and with the music on top of its own rhythm (REQ-025.13).
+      const musicPulse = s.beat?.pulse ?? 0;
       core.scale.setScalar(1 + beat * 0.07);
       core.rotation.y += dt * 0.8;
-      coreMat.emissiveIntensity = 1.6 + beat * 0.4 + speed * 0.05 + cheer * 1.0;
-      halo.scale.setScalar(r * (2.8 + beat * 0.15 + cheer * 0.5));
-      halo.material.opacity = 0.2 + beat * 0.05 + cheer * 0.2;
-      lamp.intensity = 0.8 + beat * 0.2 + cheer * 0.5;
+      coreMat.emissiveIntensity = 1.6 + beat * 0.4 + speed * 0.05 + cheer * 1.0
+        + musicPulse * 0.5;
+      halo.scale.setScalar(r * (2.8 + beat * 0.15 + cheer * 0.5 + musicPulse * 0.22));
+      halo.material.opacity = 0.2 + beat * 0.05 + cheer * 0.2 + musicPulse * 0.07;
+      lamp.intensity = 0.8 + beat * 0.2 + cheer * 0.5 + musicPulse * 0.35;
 
       /* Al recibir un golpe se pone rojo un instante. */
       const hurt = clamp(dizzy / 1.2, 0, 1);
@@ -692,9 +761,64 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
   aura.scale.setScalar(r * (type === 'tank' ? 3.0 : 2.5));
   body.add(aura);
 
+  /* --------------------------- the tell ---------------------------------
+   * ADR-010 guarantees at least 0.45 s of warning before anything that can hurt
+   * Lúmen. Until this spec that guarantee existed only in the simulation: the
+   * model about to attack looked exactly like the model that was not, so the
+   * warning was real and invisible. Three pieces make it visible, and they are
+   * driven by `s.fsm.progress` running 0 → 1 across the wind-up:
+   *
+   *   charge  a glow that swells inside the hull
+   *   ring    a flat ring on the ground that closes as the attack approaches
+   *   aim     a line towards the target, for the archetypes that shoot
+   * ------------------------------------------------------------------- */
+
+  const tellColor = type === 'boss' ? 0xff0033 : type === 'turret' ? 0xffaa00 : 0xffdd55;
+
+  const charge = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(), color: tellColor, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  charge.scale.setScalar(r * 2);
+  body.add(charge);
+
+  // A closing ring reads as a countdown without a number on screen: the player
+  // learns "when it touches the middle, move" in one encounter.
+  const ring = new THREE.Mesh(
+    once('tellRingGeo', () => new THREE.RingGeometry(0.82, 1, 40)),
+    new THREE.MeshBasicMaterial({
+      color: tellColor, transparent: true, opacity: 0,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = -r * 0.9;
+  group.add(ring);
+
+  // Only the archetypes that fire down a line get a line.
+  let aimLine = null;
+  if (type === 'turret' || type === 'boss') {
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 40),
+    ]);
+    aimLine = new THREE.Line(geo, new THREE.LineBasicMaterial({
+      color: tellColor, transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+    }));
+    body.add(aimLine);
+  }
+
+  const TELLING = new Set(['lunge_wind', 'wind', 'leap_wind', 'aim', 'slam_wind', 'volley_wind', 'roar']);
+  // While airborne on a leap or a slam, the ring stops being a countdown and
+  // becomes a footprint: it shows the exact radius the shockwave will cover
+  // (REQ-025.21). The player needs to know where it is *safe*, not merely that
+  // something is coming.
+  const IMPACTING = new Set(['leap', 'slam']);
+  const SHOCK_RADIUS = type === 'boss' ? 9 : 6.5;
+
   const phase = Math.random() * TAU;
   let t = 0;
   let aggro = 0;
+  let tell = 0;
 
   return {
     group,
@@ -705,6 +829,48 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
       const dist = s.threat ?? Infinity;      // distancia al jugador
       const aggroRange = type === 'stalker' ? 10 : type === 'tank' ? 25 : 16;
       aggro = damp(aggro, dist < aggroRange ? 1 : 0, 3, dt);
+
+      /* ------------------------------ tell ------------------------------ */
+
+      const fsm = s.fsm;
+      const telling = !!fsm && TELLING.has(fsm.state);
+      const progress = telling ? clamp(fsm.progress ?? 0, 0, 1) : 0;
+      // Rises fast, falls fast: a tell that lingers after the attack has landed
+      // is worse than none, because it stops meaning "now".
+      tell = damp(tell, telling ? 1 : 0, telling ? 22 : 14, dt);
+
+      const flash = telling ? 0.55 + Math.sin(t * (14 + progress * 30)) * 0.45 : 0;
+
+      charge.material.opacity = tell * (0.35 + flash * 0.45);
+      charge.scale.setScalar(r * (1.6 + progress * 2.4 + flash * 0.3));
+
+      const impacting = !!fsm && IMPACTING.has(fsm.state) && (type === 'tank' || type === 'boss');
+      if (impacting) {
+        // True radius, held steady and pulsing, so it reads as a hazard area
+        // rather than as a countdown.
+        ring.material.opacity = 0.55 + Math.sin(t * 18) * 0.2;
+        ring.scale.setScalar(SHOCK_RADIUS);
+        ring.rotation.z += dt * 2.4;
+      } else {
+        ring.material.opacity = tell * 0.75;
+        // Closes from wide to tight: the moment it reaches the body, it lands.
+        ring.scale.setScalar(Math.max(0.001, r * (6.5 - progress * 4.6)));
+        ring.rotation.z += dt * (0.8 + progress * 5);
+      }
+
+      if (aimLine) {
+        aimLine.material.opacity = tell * (0.12 + progress * 0.5);
+        aimLine.scale.z = 0.4 + progress * 0.6;
+      }
+
+      // Stunned by an Impulso: everything sags and the tell goes out, so the
+      // window the stun bought is unmistakable.
+      if (s.stunned) {
+        tell = 0;
+        charge.material.opacity = 0;
+        ring.material.opacity = 0;
+        if (aimLine) aimLine.material.opacity = 0;
+      }
 
       // Flota y cabecea; cuanto más cerca está de ti, más nervioso.
       const nerves = clamp(1 - dist / (aggroRange * 0.6), 0, 1);
@@ -725,8 +891,17 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
         ir.scale.setScalar(1 - nerves * 0.25); // pupila que se cierra al acercarse
       }
 
-      aura.material.opacity = 0.1 + aggro * 0.2 + Math.sin(t * 6 + phase) * 0.05;
-      aura.scale.setScalar(r * (type === 'tank' ? 3.0 : 2.5) + aggro * 0.6);
+      // The aura breathes with the music (REQ-025.13). Bounded and additive: it
+      // must never be loud enough to compete with the tell.
+      const pulse = s.beat?.pulse ?? 0;
+      aura.material.opacity = 0.1 + aggro * 0.2 + Math.sin(t * 6 + phase) * 0.05
+        + pulse * 0.06 * aggro + tell * 0.25;
+      aura.scale.setScalar(r * (type === 'tank' ? 3.0 : 2.5) + aggro * 0.6 + tell * 0.8);
+
+      if (s.stunned) {
+        body.rotation.z += Math.sin(t * 24) * 0.06;
+        body.position.y -= 0.12;
+      }
     },
   };
 }

@@ -12,6 +12,7 @@ Canonical documentation for this project. Numbered by lifecycle phase; each phas
 | Design | [21-data-model.md](21-data-model.md) | Draft |
 | Design | [22-game-design.md](22-game-design.md) | Draft |
 | Design | [23-interface.md](23-interface.md) | Draft |
+| Design | [24-audio.md](24-audio.md) | Draft |
 | Design | [30-decisions/](30-decisions/) | see each ADR |
 | Development | [40-tasks.md](40-tasks.md) | Active |
 | Development | [41-blockers.md](41-blockers.md) | Active |
@@ -47,6 +48,7 @@ If a `[M]` or `[H]` task is open and blocks progress, the agent stops and says s
 | What a thing is called on screen, and why | [20-lore.md](20-lore.md) |
 | Why a tuning number is that number | [22-game-design.md](22-game-design.md) |
 | What the interface may read and how it renders it | [23-interface.md](23-interface.md) |
+| How the music works and what it reacts to | [24-audio.md](24-audio.md) |
 | Which layer a change belongs in | [20-architecture.md](20-architecture.md) |
 | What components and world state exist | [21-data-model.md](21-data-model.md) |
 | Why the code is shaped the way it is | [30-decisions/](30-decisions/) |

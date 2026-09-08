@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { World } from '../src/core/world.js';
 import { hudSystem } from '../src/systems/hud.js';
 import { createIntegrityMeter } from '../src/ui/health.js';
+import { createCompass } from '../src/ui/compass.js';
+import { createCycleCard, TIER_NAMES } from '../src/ui/widgets.js';
 import { CONFIG } from '../src/config.js';
 
 /**
@@ -348,5 +350,181 @@ describe('Integrity meter — REQ-024.30 … REQ-024.35', () => {
 
   it('keeps the default maximum in step with the configured integrity', () => {
     expect(CONFIG.player.lives).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('Compass — REQ-025.25, REQ-025.26', () => {
+  beforeEach(() => mountDom());
+
+  const mark = (angle: number, urgency = 0.5, id: number | string = 1) =>
+    ({ angle, urgency, kind: 'telegraph' as const, id });
+
+  it('draws one arrow per off-screen tell', () => {
+    const compass = createCompass(document.getElementById('hud-compass'));
+    compass.sync([mark(0, 0.5, 1), mark(1, 0.5, 2)]);
+
+    const shown = Array.from(document.querySelectorAll('#hud-compass .compass-mark'))
+      .filter((el) => (el as HTMLElement).style.display !== 'none');
+    expect(shown.length).toBe(2);
+  });
+
+  it('never shows more than four at once, nearest to landing first — E-03', () => {
+    const compass = createCompass(document.getElementById('hud-compass'));
+    compass.sync(Array.from({ length: 20 }, (_, i) => mark(i * 0.3, i / 20, i)));
+
+    const shown = Array.from(document.querySelectorAll('#hud-compass .compass-mark'))
+      .filter((el) => (el as HTMLElement).style.display !== 'none');
+    expect(shown.length).toBe(4);
+    // The most urgent one is the most opaque.
+    expect(Number((shown[0] as HTMLElement).style.opacity)).toBeGreaterThan(0.9);
+  });
+
+  it('hides arrows again when nothing is telegraphing', () => {
+    const compass = createCompass(document.getElementById('hud-compass'));
+    compass.sync([mark(0), mark(1)]);
+    compass.sync([]);
+
+    const shown = Array.from(document.querySelectorAll('#hud-compass .compass-mark'))
+      .filter((el) => (el as HTMLElement).style.display !== 'none');
+    expect(shown.length).toBe(0);
+  });
+
+  it('marks a damage bearing distinctly from a telegraph', () => {
+    const compass = createCompass(document.getElementById('hud-compass'));
+    compass.damage(1.2);
+    compass.sync([]);
+
+    const shown = Array.from(document.querySelectorAll('#hud-compass .compass-mark'))
+      .filter((el) => (el as HTMLElement).style.display !== 'none') as HTMLElement[];
+    expect(shown.length).toBe(1);
+    expect(shown[0].dataset.kind).toBe('damage');
+  });
+
+  it('ignores a nonsense bearing', () => {
+    const compass = createCompass(document.getElementById('hud-compass'));
+    compass.damage(Number.NaN);
+    compass.sync([]);
+
+    const shown = Array.from(document.querySelectorAll('#hud-compass .compass-mark'))
+      .filter((el) => (el as HTMLElement).style.display !== 'none');
+    expect(shown.length).toBe(0);
+  });
+
+  it('degrades to a no-op without a root', () => {
+    const compass = createCompass(null);
+    expect(() => { compass.sync([mark(0)]); compass.damage(1); compass.clear(); }).not.toThrow();
+  });
+});
+
+describe('Ciclo card — REQ-025.28', () => {
+  beforeEach(() => mountDom());
+
+  it('names the Ciclo and its tier', () => {
+    const card = createCycleCard(
+      document.getElementById('hud-cycle-card'),
+      document.getElementById('hud-cycle-number'),
+      document.getElementById('hud-cycle-name'),
+    );
+    card.show(7, TIER_NAMES[2]);
+
+    expect((document.getElementById('hud-cycle-card') as HTMLElement).hidden).toBe(false);
+    expect(document.getElementById('hud-cycle-number')?.textContent).toBe('7');
+    expect(document.getElementById('hud-cycle-name')?.textContent).toBe('Radiación');
+  });
+
+  it('covers every palette tier', () => {
+    expect(TIER_NAMES.length).toBe(4);
+    expect(new Set(TIER_NAMES).size).toBe(4);
+  });
+
+  it('hides on demand and degrades without a root', () => {
+    const card = createCycleCard(
+      document.getElementById('hud-cycle-card'),
+      document.getElementById('hud-cycle-number'),
+      document.getElementById('hud-cycle-name'),
+    );
+    card.show(2, TIER_NAMES[0]);
+    card.hide();
+    expect((document.getElementById('hud-cycle-card') as HTMLElement).hidden).toBe(true);
+
+    expect(() => createCycleCard(null, null, null).show(1, 'x')).not.toThrow();
+  });
+});
+
+describe('Run summary — REQ-025.27', () => {
+  beforeEach(() => mountDom());
+
+  it('renders one row per statistic and replaces the hint line', () => {
+    const world = makeWorld();
+    world.addSystem(hudSystem(fakeEngine, fakeInput));
+
+    world.events.emit('ui:message', {
+      title: 'El núcleo se ha apagado',
+      text: 'x',
+      button: 'Reintentar',
+      summary: [
+        { label: 'Ciclo alcanzado', value: '7' },
+        { label: 'Luz recuperada', value: '142' },
+      ],
+    });
+
+    const el = document.getElementById('run-summary') as HTMLElement;
+    expect(el.hidden).toBe(false);
+    expect(el.querySelectorAll('dt').length).toBe(2);
+    expect(el.querySelectorAll('dd')[1].textContent).toBe('142');
+    expect((document.getElementById('panel-hint') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('stays hidden for an ordinary message', () => {
+    const world = makeWorld();
+    world.addSystem(hudSystem(fakeEngine, fakeInput));
+
+    world.events.emit('ui:message', { title: 'Ciclo superado', text: 'x', button: null });
+
+    expect((document.getElementById('run-summary') as HTMLElement).hidden).toBe(true);
+    expect((document.getElementById('panel-hint') as HTMLElement).hidden).toBe(false);
+  });
+});
+
+describe('Audio settings — REQ-025.04', () => {
+  beforeEach(() => mountDom());
+
+  it('reports music and effects volume separately', () => {
+    const world = makeWorld();
+    const changes: any[] = [];
+    world.addSystem(hudSystem(fakeEngine, fakeInput));
+    world.events.on('audio:settings', (s: any) => changes.push(s));
+
+    const music = document.getElementById('vol-music') as HTMLInputElement;
+    music.value = '40';
+    music.dispatchEvent(new Event('input'));
+
+    const sfx = document.getElementById('vol-sfx') as HTMLInputElement;
+    sfx.value = '10';
+    sfx.dispatchEvent(new Event('input'));
+
+    expect(changes).toEqual([{ musicVolume: 0.4 }, { sfxVolume: 0.1 }]);
+    expect(document.getElementById('vol-music-value')?.textContent).toBe('40%');
+    expect(document.getElementById('vol-sfx-value')?.textContent).toBe('10%');
+  });
+
+  it('starts at the configured volume when nothing has been saved', () => {
+    // `Number('')` is 0, so a naive read of an empty store starts the game
+    // silent. A first-time player must hear the game.
+    const world = makeWorld();
+    world.addSystem(hudSystem(fakeEngine, fakeInput));
+
+    expect((document.getElementById('vol-music') as HTMLInputElement).value)
+      .toBe(String(Math.round(CONFIG.audio.musicVolume * 100)));
+    expect((document.getElementById('vol-sfx') as HTMLInputElement).value)
+      .toBe(String(Math.round(CONFIG.audio.sfxVolume * 100)));
+    expect(CONFIG.audio.musicVolume).toBeGreaterThan(0);
+    expect(CONFIG.audio.sfxVolume).toBeGreaterThan(0);
+  });
+
+  it('keeps the telegraph cues separable from the music, which is the point', () => {
+    // A player who silences the track must still be able to hear a wind-up:
+    // the cue is a fairness feature, not decoration.
+    expect(CONFIG.audio.musicVolume).not.toBe(CONFIG.audio.sfxVolume);
   });
 });

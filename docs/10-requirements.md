@@ -94,3 +94,35 @@ EARS patterns:
 | :--- | :--- | :--- | :--- |
 | REQ-024.43 | The repository shall carry a lore bible covering the world, the factions, every archetype, every Ventaja and every HUD element, and every user-facing string shall trace to its glossary. | 024 | Proposed |
 | REQ-024.44 | The repository shall carry a game-design document stating the numeric feel targets so any future tuning change can be checked against an intended value. | 024 | Proposed |
+
+## Audio and reactivity (spec 025)
+
+| ID | Requirement | Source spec | Status |
+| :--- | :--- | :--- | :--- |
+| REQ-025.01 | The audio layer shall present separate music, SFX and UI buses, a shared reverb send, a delay send and a master limiter. | 025 | Proposed |
+| REQ-025.02 | Percussion shall be synthesised from a noise buffer, not from a square oscillator. | 025 | Proposed |
+| REQ-025.03 | When a kick is scheduled, the system shall duck the music bus and recover over the following beat. | 025 | Proposed |
+| REQ-025.04 | The system shall expose and persist independent music and SFX volume settings. | 025 | Proposed |
+| REQ-025.05 | If the Web Audio API is unavailable or blocked, the game shall run unchanged and silent. | 025 | Proposed |
+| REQ-025.06 | The score shall be organised in layers, each gated by a threshold on a continuous intensity value. | 025 | Proposed |
+| REQ-025.07 | Intensity shall derive from Resonancia, distance to the nearest Sombra and remaining Núcleo, and shall move smoothly. | 025 | Proposed |
+| REQ-025.08 | While Lúmen holds one layer of Núcleo, the score shall shift to its tension voicing regardless of the other inputs. | 025 | Proposed |
+| REQ-025.09 | Each palette tier shall use its own key and mode. | 025 | Proposed |
+| REQ-025.10 | Tempo shall scale with intensity within ±8 % of the tier base. | 025 | Proposed |
+| REQ-025.11 | The audio layer shall publish `world.state.beat` with bar, beat, sixteenth, phase, pulse, bpm and intensity. | 025 | Proposed |
+| REQ-025.12 | The beat clock shall keep running when audio is muted, unavailable or not yet started. | 025 | Proposed |
+| REQ-025.13 | The avatar layer shall pass the beat to every model, and models may pulse with it. | 025 | Proposed |
+| REQ-025.14 | The environment shall react to the beat, bounded so it never obscures gameplay. | 025 | Proposed |
+| REQ-025.15 | When a body lands, physics shall record the impact speed and the audio layer shall scale the landing sound by it. | 025 | Proposed |
+| REQ-025.16 | While Lúmen is grounded and moving, the system shall emit footsteps at a rate proportional to speed. | 025 | Proposed |
+| REQ-025.17 | The music low-pass shall open with Lúmen's speed. | 025 | Proposed |
+| REQ-025.18 | Sounds belonging to a world position shall be spatialised, with the listener following the camera. | 025 | Proposed |
+| REQ-025.19 | The avatar state shall carry the entity's FSM state and a normalised telegraph progress. | 025 | Proposed |
+| REQ-025.20 | While an archetype is telegraphing, its model shall render a visible tell that grows with the progress. | 025 | Proposed |
+| REQ-025.21 | Before a Coloso or Devorador lands a shockwave, the system shall project a ground ring at the exact radius. | 025 | Proposed |
+| REQ-025.22 | The Centinela shall render an aim line while locking on. | 025 | Proposed |
+| REQ-025.23 | Lúmen shall leave a motion trail scaled by speed, and after-images while an Impulso is active. | 025 | Proposed |
+| REQ-025.25 | When a Sombra telegraphs from outside the view, the HUD shall show a screen-edge indicator for the duration. | 025 | Proposed |
+| REQ-025.26 | When Lúmen takes damage from a source with a position, the HUD shall show a directional indicator. | 025 | Proposed |
+| REQ-025.27 | When a run ends, the overlay shall present a summary of the run. | 025 | Proposed |
+| REQ-025.28 | When a Ciclo starts, the HUD shall present a brief intro card naming it. | 025 | Proposed |

@@ -202,6 +202,36 @@ banners shoving each other up the screen. The container is `aria-live="polite"`.
 
 ---
 
+### 4.6 Compass — REQ-025.25, REQ-025.26
+
+Screen-edge arrows for things that matter and are not on screen. Two sources, one
+mechanism: a Sombra winding up behind the camera, and the direction a hit came from.
+
+This is the last channel of the fairness contract in
+[ADR-012](30-decisions/012-the-tell-must-be-visible.md): the telegraph is guaranteed by
+the simulation, drawn on the model, played from the Sombra's position — and this covers
+the case where the model is behind the player entirely.
+
+At most **four** arrows, most urgent first. Twenty Sombras winding up at once must not
+turn the screen into a ring of arrows. Damage marks are styled distinctly (carmine, not
+amber) and fade over 0.9 s.
+
+The binder does the projection. The awkward case is a point *behind* the camera, which
+projects to a mirrored position; both axes are flipped for that case, or the arrow points
+at exactly the wrong side of the screen.
+
+### 4.7 Ciclo card — REQ-025.28
+
+A brief card naming the Ciclo and its band at the start of it. A generated level has no
+title screen and no landmarks: without one moment that says "this is a new place", every
+Ciclo blurs into the last.
+
+### 4.8 Run summary — REQ-025.27
+
+Ciclo reached, Luz recovered, best Resonancia, Sombras shattered. It takes the hint line's
+place rather than adding a row, and it is hidden for every other message. A run with no
+scoreboard has nothing to beat.
+
 ## 5. Screen effects
 
 | Layer | Trigger | Behaviour |
@@ -231,9 +261,15 @@ none had ever played.
   `try/catch` — private mode and some embeds throw on access, and a settings panel is not
   worth crashing a game over.
 
-Settings offered: starting Ciclo, Lúmen's frecuencia (5 colours), sound, graphics
-quality, and **camera shake**. Shake is a common motion-sickness trigger, and a game
-nobody can play for ten minutes is not a game.
+Settings offered: starting Ciclo, Lúmen's frecuencia (5 colours), sound, graphics quality,
+**camera shake**, and separate **music** and **effects** volume.
+
+Two audio sliders rather than one, because the telegraph cues are a fairness feature: a
+player who wants the soundtrack quiet must not have to give up the warning that something
+is about to hit them.
+
+Shake is separable for the same class of reason — it is a common motion-sickness trigger,
+and a game nobody can play for ten minutes is not a game.
 
 ---
 
