@@ -10,6 +10,8 @@ references.
 | OQ-003 | Is 30 Ciclos the intended horizon for a run, or should the composer keep introducing new chunk vocabulary past Ciclo 15? Eleven chunks stop feeling fresh somewhere around there. Affects how much content the library needs. | REQ-024.16 | **Open** |
 | OQ-004 | Should a run be persisted (best Luz, furthest Ciclo)? There is a score and currently no reason to beat it. Out of scope for spec 024; it is a product decision, not a technical one. | — | **Open** |
 
+| OQ-007 | Are the enemy tells legible with colour vision deficiency? The tell is amber on a dark ground, which is the worst case for deuteranopia against the carmine Sombras. It also carries a shape change (a closing ring) and a positioned sound, so it is probably sufficient — but "probably" is not a verification. | REQ-025.20 | **Open** |
+
 ## Resolved
 
 | ID | Question | Resolution |

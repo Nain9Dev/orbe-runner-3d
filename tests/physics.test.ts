@@ -359,6 +359,71 @@ describe('Physics System', () => {
     expect(tile.crumbling.state).toBe('gone');
   });
 
+  /**
+   * The impact speed exists for exactly one frame. The audio layer scales the
+   * landing sound by it, and without it a step off a kerb and a fall down a
+   * Torre de Impulso are indistinguishable.
+   */
+  it('records the speed a landing cancelled — REQ-025.15', () => {
+    world.spawn({
+      tag: 'ground',
+      transform: { position: new THREE.Vector3(0, -0.5, 0), yaw: 0 },
+      solid: { size: new THREE.Vector3(40, 1, 40) },
+    });
+
+    const faller = world.spawn({
+      transform: { position: new THREE.Vector3(0, 18, 0), yaw: 0 },
+      body: body(),
+    });
+
+    let peak = 0;
+    for (let i = 0; i < 180; i++) {
+      world.update(1 / 60);
+      peak = Math.max(peak, faller.body.impactSpeed ?? 0);
+      if (faller.body.grounded) break;
+    }
+
+    expect(peak).toBeGreaterThan(10);
+    expect(faller.body.grounded).toBe(true);
+  });
+
+  it('scales the recorded impact with the height of the fall', () => {
+    const drop = (height: number) => {
+      const w = new World();
+      w.addSystem(physicsSystem());
+      w.spawn({
+        tag: 'ground',
+        transform: { position: new THREE.Vector3(0, -0.5, 0), yaw: 0 },
+        solid: { size: new THREE.Vector3(40, 1, 40) },
+      });
+      const e = w.spawn({
+        transform: { position: new THREE.Vector3(0, height, 0), yaw: 0 },
+        body: body(),
+      });
+      let peak = 0;
+      for (let i = 0; i < 300; i++) {
+        w.update(1 / 60);
+        peak = Math.max(peak, e.body.impactSpeed ?? 0);
+        if (e.body.grounded) break;
+      }
+      return peak;
+    };
+
+    expect(drop(20)).toBeGreaterThan(drop(3));
+  });
+
+  it('forgets the last landing once the body is airborne again', () => {
+    const e = world.spawn({
+      transform: { position: new THREE.Vector3(0, 30, 0), yaw: 0 },
+      body: body({ impactSpeed: 14, grounded: true, contact: true, groundTimer: 0 }),
+    });
+
+    for (let i = 0; i < 20; i++) world.update(1 / 60);
+
+    expect(e.body.grounded).toBe(false);
+    expect(e.body.impactSpeed).toBe(0);
+  });
+
   it('lets a projectile pass through a collapsed tile', () => {
     const tile = world.spawn({
       tag: 'crumbling_platform',

@@ -169,3 +169,27 @@ a mesh to it; its **draw** happens in the `render` phase, which the world runs a
 - No `import()` inside any loop. Three used to exist — in the HUD, the renderer and the
   audio system — each creating a promise per frame to read a boolean from an
   already-loaded module.
+
+## The aural layer (spec 025)
+
+`src/audio/` is the exact counterpart of `src/ui/`: a presentation layer that owns its own
+medium and knows nothing about the ECS. `src/systems/audio.ts` is its binder.
+
+```mermaid
+flowchart LR
+    state["world.state"] --> binder["systems/audio.ts"]
+    binder --> score["audio/score.ts<br/>what to play"]
+    score --> synth["audio/synth.ts<br/>voices"]
+    synth --> engine["audio/engine.ts<br/>Web Audio graph"]
+    binder --> clock["audio/clock.ts<br/>musical time"]
+    clock -->|world.state.beat| models["models · environment · interface"]
+```
+
+Same rules as `src/ui/`: no ECS, no Three.js, and the only permitted import is
+`src/config.ts`. The contract is documented in [24-audio.md](24-audio.md), and the reason
+there is a shared clock at all is [ADR-011](30-decisions/011-shared-musical-clock.md).
+
+**The clock is the interesting part.** It is what makes the models, the bloom and the
+music share a phase by construction rather than by coincidence — and it runs on an
+injected time source, so a browser with no audio still has a pulsing world and the whole
+module is testable without Web Audio.

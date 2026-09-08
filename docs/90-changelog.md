@@ -3,6 +3,53 @@
 Relevant changes, newest first. Format: `## [version] - YYYY-MM-DD` with Added / Changed /
 Fixed / Removed sections.
 
+## [Unreleased] — Spec 025, *Resonancia*
+
+### Fixed
+
+- **A first-time player started the game muted.** `Number('')` is `0`, which is finite and
+  inside the valid range, so reading an empty volume store returned silence rather than
+  the default.
+- **Every game-over title rendered as a solid coloured rectangle.** The `background`
+  shorthand on `.title-death` and `.title-victory` reset `background-clip` to `border-box`,
+  undoing the `background-clip: text` that makes a gradient title into text.
+
+### Added
+
+- **A shared musical clock.** `world.state.beat` is published by the audio layer and read
+  by the models, the environment and the interface, so the world pulses with the music by
+  construction instead of by coincidence. It runs on an injected time source, so a muted
+  or blocked browser still pulses. See ADR-011.
+- **The aural layer** (`src/audio/`): bus graph with separate music, SFX and UI paths, a
+  generated convolution reverb, a delay send, a master limiter, and a sidechain duck
+  scheduled with every kick. Contract in [`24-audio.md`](24-audio.md).
+- **An adaptive score.** Layers gated on a smoothed intensity derived from Resonancia,
+  the distance to the nearest Sombra and remaining Núcleo. One layer of Núcleo overrides
+  everything. Each palette band has its own key, mode and tempo.
+- **Percussion from a noise buffer** rather than a square oscillator.
+- **Spatial audio**: telegraphs, bolts, shockwaves, Fragmentos and Balizas are positioned,
+  and the listener follows the camera.
+- **Physics-driven sound**: `body.impactSpeed` scales the landing, footsteps follow
+  distance travelled rather than a timer, and the music low-pass opens with speed.
+- **The telegraph is now visible** — charge glow, a ground ring that closes as the attack
+  approaches, and an aim line for the archetypes that shoot. Before this, the 0.45 s
+  fairness guarantee existed only in the simulation. See ADR-012.
+- **A shockwave footprint** at the exact radius, drawn while a Coloso or Devorador is in
+  the air, so the player can see where it is safe.
+- **A screen-edge compass** for Sombras winding up behind the camera and for the direction
+  damage came from. Closes the spec-024 follow-up T-024.F1.
+- **A motion trail** for Lúmen, denser during an Impulso.
+- A Ciclo intro card, an end-of-run summary, and separate music and effects volume.
+- 55 new tests (145 → 200), including the musical clock and the intensity model.
+
+### Changed
+
+- `src/systems/audio.ts` is now a binder; all Web Audio lives in `src/audio/`.
+- Bloom strength and enemy auras breathe with the beat, bounded so they never obscure a
+  platform edge.
+
+---
+
 ## [Unreleased] — Spec 024, *Flow & Feel*
 
 ### Fixed

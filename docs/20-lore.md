@@ -252,7 +252,44 @@ the Registro and may appear in toasts) and are fixed here.
 
 ---
 
-## 9. Tone
+## 8.2 The four bands
+
+The Ciclos are grouped in bands of three. Each band has its own palette, its own key and
+its own name — the same name in both, because a band is one place and not two.
+
+| Band | Ciclos | Name | Looks like | Sounds like |
+| :--- | :--- | :--- | :--- | :--- |
+| 0 | 1–3 | **Neón** | Violet ground, magenta sun | A minor pentatonic, 132 BPM |
+| 1 | 4–6 | **Abismo** | Deep blue, cyan sun | G, phrygian-flavoured, 138 BPM |
+| 2 | 7–9 | **Radiación** | Toxic green | B major pentatonic, 144 BPM |
+| 3 | 10+ | **Carmesí** | Black and blood | F, unstable, 150 BPM |
+
+The list is duplicated in `src/ui/widgets.ts` and `src/audio/score.ts` because neither
+presentation layer may import the other. **This table is the source of truth**; if the
+three ever disagree, the code is wrong.
+
+---
+
+## 9. How the world sounds
+
+The full contract is in [24-audio.md](24-audio.md). What matters for the fiction:
+
+- **The Vacío has a pulse.** The music is not a soundtrack laid over the game; the models,
+  the bloom and the score share one clock, so Lúmen's core visibly beats in time with the
+  bass. A spark holding itself together is doing so rhythmically.
+- **Tension is a mix, not a cue.** The arrangement thickens as a Sombra closes in, as the
+  Resonancia rises, as the Núcleo wears down — continuously, never as a switch. At one
+  layer of Núcleo the score goes to its tension voicing whatever else is true: the player
+  should *hear* that they are about to lose.
+- **A Sombra winding up is audible from where it is.** The telegraph cue is positioned in
+  the world, so a Centinela locking on from the left is heard on the left. This is a
+  fairness feature and not an effect, which is why the settings let a player mute the
+  music without muting it.
+- **Falling is silence.** The Vacío takes the Resonancia, and the arrangement thins with it.
+
+---
+
+## 10. Tone
 
 Cold, spare, unsentimental. The Vacío is not evil and Lúmen is not brave; one is a
 condition and the other is a physical process that has not finished yet. Nothing in the
@@ -274,7 +311,7 @@ meaning, and light used as information rather than decoration —
 
 ---
 
-## 10. Where the fiction touches the code
+## 11. Where the fiction touches the code
 
 Kept here so a future change can find every place a term is asserted.
 

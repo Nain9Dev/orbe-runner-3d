@@ -92,6 +92,12 @@ export function enemySystem() {
 function enter(world, e, state, duration, telegraph = false) {
   e.fsm.state = state;
   e.fsm.timer = telegraph ? Math.max(duration, CONFIG.enemy.telegraphFloor) : duration;
+  // The presentation layers need to know how far through a wind-up this is.
+  // Recording the duration here keeps that a single fact: a lookup table copied
+  // into the avatar system and the HUD would be two more places to forget when
+  // a timing changes.
+  e.fsm.duration = e.fsm.timer;
+  e.fsm.telegraph = telegraph;
   if (telegraph) {
     world.events.emit('enemy:telegraph', {
       enemy: e,

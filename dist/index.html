@@ -16,10 +16,10 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2305d9e8'/></svg>" />
-  <script type="module" crossorigin src="./assets/index-DaUdg2n6.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-_Z8dj0Kb.css">
+  <script type="module" crossorigin src="./assets/index-tbYWO6Xh.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CVLh2Vj0.css">
 </head>
 <body>
   <!-- Capas de pantalla completa: viñetas de daño e integridad crítica -->
@@ -92,8 +92,18 @@
       <div class="reticle-dot"></div>
     </div>
 
+    <!-- Marcas de borde: avisos fuera de pantalla y dirección del daño -->
+    <div id="hud-compass" class="compass" aria-hidden="true"></div>
+
     <!-- Avisos transitorios -->
     <div id="hud-toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Rótulo de entrada al Ciclo -->
+    <div id="hud-cycle-card" class="cycle-card" hidden aria-hidden="true">
+      <div class="cycle-card-kicker">CICLO</div>
+      <div class="cycle-card-number" id="hud-cycle-number">1</div>
+      <div class="cycle-card-name" id="hud-cycle-name">Neón</div>
+    </div>
 
     <!-- Inferior centro: INTEGRIDAD DEL NÚCLEO -->
     <div class="hud-bottom-center">
@@ -128,7 +138,9 @@
         <div class="control-key"><span>ESC</span> PAUSA</div>
       </div>
 
-      <p class="panel-hint">El Impulso atraviesa a las Sombras frágiles y las fractura.</p>
+      <dl id="run-summary" class="run-summary" hidden></dl>
+
+      <p class="panel-hint" id="panel-hint">El Impulso atraviesa a las Sombras frágiles y las fractura.</p>
 
       <div class="panel-actions">
         <button id="start" class="btn-primary">JUGAR</button>
@@ -175,6 +187,18 @@
         <button id="btn-shake" class="btn-toggle active" aria-pressed="true">ON</button>
       </div>
 
+      <div class="setting-group">
+        <label for="vol-music">Música <span class="setting-value" id="vol-music-value">70%</span></label>
+        <input id="vol-music" class="slider" type="range" min="0" max="100" value="70"
+               aria-label="Volumen de música" />
+      </div>
+
+      <div class="setting-group">
+        <label for="vol-sfx">Efectos <span class="setting-value" id="vol-sfx-value">90%</span></label>
+        <input id="vol-sfx" class="slider" type="range" min="0" max="100" value="90"
+               aria-label="Volumen de efectos" />
+      </div>
+
       <button id="btn-save" class="btn-primary full">VOLVER</button>
     </div>
 
@@ -212,6 +236,6 @@
       <button id="btn-registry-back" class="btn-primary full">VOLVER</button>
     </div>
   </div>
-
+
 </body>
 </html>

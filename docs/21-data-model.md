@@ -59,7 +59,7 @@ erDiagram
 
 | Component | Fields | Owner |
 | :--- | :--- | :--- |
-| `body` | `velocity: Vector3`, `radius`, `mass`, `grounded`, `contact`, `groundTimer`, `groundNormal: Vector3`, `carry: Vector3`, `friction`, `drag`, `bounciness`, `wallBounce`, `noGravity`, `damped` | `physics` |
+| `body` | `velocity: Vector3`, `radius`, `mass`, `grounded`, `contact`, `groundTimer`, `groundNormal: Vector3`, `carry: Vector3`, `impactSpeed`, `friction`, `drag`, `bounciness`, `wallBounce`, `noGravity`, `damped` | `physics` |
 | `solid` | `size: Vector3` | Static AABB |
 | `moving` | `axis: 'x'\|'z'`, `range`, `speed`, `origin`, `t`, `dx`, `dz` | `physics` |
 | `crumbling` | `state: 'idle'\|'crumbling'\|'gone'`, `timer`, `duration`, `respawn` | `physics` |
@@ -77,6 +77,13 @@ Three fields deserve their own note because each one exists to fix a specific de
   projectile collision, then reforms. It is never destroyed: a destroyed tile permanently
   removed a route the player still needed, which made a whole Ciclo unwinnable after one
   fall. See `docs/22-game-design.md` §3.5.
+- **`impactSpeed`** — the downward speed the last floor contact cancelled. It exists for
+  exactly one frame; one step later the velocity is gone and nothing downstream could tell
+  a step off a kerb from a fall down a tower. The audio layer scales the landing sound by
+  it.
+- **`fsm.duration` / `fsm.telegraph`** — recorded when a brain enters a state, so the
+  model animation, the compass urgency and the logic all read the same number instead of
+  three copies of a timing table.
 - **`damped`** — a controller has already resolved this body's horizontal velocity for the
   frame, so the integrator must not damp it again. Without it the player's steady-state
   speed settled 20 % below `CONFIG.player.speed`, and every gap the composer sized
@@ -98,7 +105,7 @@ twice as generous at 30 FPS as at 60.
 | Component | Fields |
 | :--- | :--- |
 | `enemy` | `type`, `speed`, `aggroRange`, `home: Vector3`, `hover`, `leash`, `fragile`, `integrity`, `stun` |
-| `fsm` | `state`, `timer`, `phase`, `aim: Vector3` |
+| `fsm` | `state`, `timer`, `duration`, `telegraph`, `phase`, `aim: Vector3` |
 | `hazard` | `radius`, `damage`, `box?: Vector3`, `push?` |
 | `interceptor` | `speed`, `hover` |
 | `ally` | `followDist`, `fireTimer`, `hover` |
@@ -146,6 +153,9 @@ presentation layer reads only from here.
 | `combo` | number | Resonancia |
 | `comboTimer` / `comboWindow` | number / 0..1 | Seconds left, and the same as a ratio for the HUD arc |
 | `dashRatio` | 0..1 | Impulso readiness |
+| `beat` | `{ bar, beat, sixteenth, phase, pulse, downbeat, bpm, intensity, live }` | The shared musical clock. Models, environment and interface all read it; see [ADR-011](30-decisions/011-shared-musical-clock.md). |
+| `audio` | `{ ready, muted, musicVolume, sfxVolume }` | State of the aural layer |
+| `bestCombo` / `shattered` | number | Run statistics, for the end-of-run summary |
 | `dashing` | boolean | An Impulso is in flight |
 | `invulnerable` | boolean | i-frames active |
 | `playerSpeed` | number | Current horizontal speed |
@@ -182,6 +192,8 @@ embeds throw on access.
 | `orbi_mute` | `'true'\|'false'` | Sound off |
 | `orbi_gfx` | `'true'\|'false'` | `true` = low quality |
 | `orbi_shake` | `'true'\|'false'` | Camera shake |
+| `orbi_music` | string | Music volume, 0..1 |
+| `orbi_sfx` | string | Effects volume, 0..1 |
 
 ---
 
@@ -210,7 +222,9 @@ must tolerate a payload that is missing optional fields.
 | `enemy:shockwave` | `{ enemy, at, radius, damage }` | `enemy` |
 | `enemy:fired` / `enemy:phase` | `{ enemy, at }` / `{ enemy, phase }` | `enemy` |
 | `projectile:impact` / `projectile:expired` | `{ at }` | `projectile` |
-| `platform:collapsed` | entity | `physics` |
+| `platform:collapsed` / `platform:restored` | entity | `physics` |
+| `audio:settings` | `{ muted?, musicVolume?, sfxVolume? }` | UI |
+| `ui:click` | `{ up }` | UI |
 | `combo:lost` | — | `game` |
 | `ui:message` / `ui:pause` / `ui:hide` / `ui:toast` | see [23-interface.md](23-interface.md) | `game`, UI |
 | `particles:burst` / `particles:shockwave` | `{ pos \| at, color, count, radius }` | any |

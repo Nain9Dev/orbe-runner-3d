@@ -168,6 +168,8 @@ function settleGrounding(bodies, dt) {
     // Moving upwards means the body left on purpose: drop the grace immediately.
     const leaping = b.velocity.y > 0.5;
     b.grounded = !leaping && b.groundTimer < CONFIG.physics.groundStickTime;
+    // Airborne again: forget the last landing, so the next one reports its own.
+    if (!b.grounded) b.impactSpeed = 0;
   }
 }
 
@@ -361,6 +363,12 @@ function resolveSphereBox(bodyEntity, solidEntity, first) {
     if (isFloor) {
       // Never bounce off the ground: cancel the normal component exactly.
       // The tangential component is untouched, so momentum survives the landing.
+      //
+      // The cancelled speed is kept on the body, because it is the only moment
+      // the information exists: one frame later the velocity is gone and
+      // nothing downstream can tell a step off a kerb from a fall down a tower.
+      // The audio layer scales the landing sound by it (REQ-025.15).
+      body.impactSpeed = Math.max(body.impactSpeed ?? 0, -into);
       body.velocity.addScaledVector(normal, -into);
     } else {
       // Walls: remove the normal component, keep the slide (REQ-024.05).

@@ -23,6 +23,11 @@ export function avatarSystem() {
     },
 
     update(world, dt) {
+      // The musical clock, handed to every model so the whole world can breathe
+      // on the same beat (REQ-025.13). It is read once per step rather than per
+      // model, and it is safe before the audio system has published anything.
+      const beat = world.state.beat ?? null;
+
       for (const e of world.query('avatar', 'transform')) {
         const v = e.body?.velocity;
         const state = {
@@ -30,6 +35,14 @@ export function avatarSystem() {
           grounded: e.body?.grounded,
           yaw: e.transform.yaw,
           invulnerable: e.player ? e.player.invulnerable > 0 : false,
+          beat,
+          // The FSM, normalised, so a model can render the tell for whatever its
+          // brain is currently doing (REQ-025.19). `progress` runs 0 → 1 across
+          // the telegraph, which is exactly the shape a wind-up wants.
+          fsm: e.fsm ? { state: e.fsm.state, progress: telegraphProgress(e) } : null,
+          stunned: (e.enemy?.stun ?? 0) > 0,
+          dashing: e.player ? (e.player.dash?.time ?? 0) > 0 : false,
+          reached: e.checkpoint ? e.checkpoint.reached : undefined,
         };
 
         if (e.player) {
@@ -53,6 +66,21 @@ export function avatarSystem() {
       }
     },
   };
+}
+
+/**
+ * How far through its current state a brain is, as 0..1.
+ *
+ * Telegraph states count *down* from their duration, so the progress a wind-up
+ * animation wants is the inverse. The duration is recorded by the enemy system
+ * when it enters the state, which is what keeps this from needing a copy of
+ * every timing in the game.
+ */
+function telegraphProgress(entity) {
+  const total = entity.fsm.duration;
+  if (!total || total <= 0) return 0;
+  const left = Math.max(0, entity.fsm.timer ?? 0);
+  return Math.min(1, Math.max(0, 1 - left / total));
 }
 
 /** Entidad con ese componente más cercana a `from`, con su distancia. */

@@ -34,11 +34,37 @@ All tasks complete and verified. Detail, `Done when:` criteria and the session h
 
 **Verification:** `npm test` → 9 files, 145 tests, all passing. `npm run build` clean.
 
+## Spec 025 — Resonancia
+
+Detail in [`specs/025-resonance/tasks.md`](../specs/025-resonance/tasks.md).
+
+| Task | Label | Covers | State |
+| :--- | :--- | :--- | :--- |
+| T-025.01 Musical clock | `[A]` | REQ-025.11, .12 | Done |
+| T-025.02 Adaptive score and intensity | `[A]` | REQ-025.06 … .10 | Done |
+| T-025.03 Audio engine and bus graph | `[A]` | REQ-025.01, .03, .05, .18 | Done |
+| T-025.04 Voices from noise and oscillators | `[A]` | REQ-025.02 | Done |
+| T-025.05 Audio binder and beat publication | `[A]` | REQ-025.11, .12, .17 | Done |
+| T-025.06 `body.impactSpeed` | `[A]` | REQ-025.15 | Done |
+| T-025.07 Footsteps by distance | `[A]` | REQ-025.16 | Done |
+| T-025.08 Music and effects volume | `[A]` | REQ-025.04 | Done |
+| T-025.09 Beat and FSM in the avatar state | `[A]` | REQ-025.13, .19 | Done |
+| T-025.10 Visible tells | `[A]` | REQ-025.20, .22 | Done |
+| T-025.11 Shockwave footprint | `[A]` | REQ-025.21 | Done |
+| T-025.12 Lúmen motion trail | `[A]` | REQ-025.13, .23 | Done |
+| T-025.13 Beat-reactive bloom | `[A]` | REQ-025.14 | Done |
+| T-025.14 Compass — closes T-024.F1 | `[A]` | REQ-025.25, .26 | Done |
+| T-025.15 Ciclo card and run summary | `[A]` | REQ-025.27, .28 | Done |
+| T-025.16 Documentation and ADRs 011–012 | `[A]` | — | Done |
+
+**Verification:** `npm test` → 11 files, 200 tests, all passing. `npm run build` clean.
+
 ## Open
 
 | Task | Label | Notes |
 | :--- | :--- | :--- |
-| T-024.H1 Approve ADR 006 – 010 | `[H]` | Owner only. They are `Proposed`; an agent may not promote them. |
+| T-024.H1 Approve ADR 006 – 012 | `[H]` | Owner only. They are `Proposed`; an agent may not promote them. |
+| T-025.H1 Check the tells against a colour-blindness simulation | `[H]` | Amber on dark plus a shape change plus a sound is likely enough, but it has not been verified. See `docs/11-open-questions.md` OQ-007. |
 | T-024.H2 Confirm the difficulty of Ciclos 8 – 15 by hand | `[H]` | The scripted agent in `docs/22-game-design.md` §7 is a floor, not a substitute for playing it. |
-| T-024.F1 Off-screen telegraph indicator | `[A]` | A Centinela aiming from behind the camera is audible but not visible. See `specs/024-flow-and-feel/checklist.md` §4. |
+| ~~T-024.F1 Off-screen telegraph indicator~~ | `[A]` | **Done** in spec 025 (T-025.14). |
 | T-024.F2 Remove `state.lives` | `[A]` | Deprecated mirror of `state.integrity`. Removal target: spec 026. |

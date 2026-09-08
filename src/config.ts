@@ -37,6 +37,14 @@ export const CONFIG = {
 
   audio: {
     muted: false,
+    /**
+     * Two sliders, not twelve. Music and SFX are the only split a player of a
+     * browser game actually wants: turn the track down, keep the telegraphs
+     * audible — and the telegraphs are a fairness feature, so they must be
+     * separable from the music.
+     */
+    musicVolume: 0.7,
+    sfxVolume: 0.9,
   },
 
   graphics: {
