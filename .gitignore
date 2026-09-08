@@ -8,3 +8,6 @@ Thumbs.db
 
 # Node (solo si algún día se añaden herramientas de desarrollo)
 node_modules/
+
+# Local editor/preview configuration, not part of the project contract
+.claude/
