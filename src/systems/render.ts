@@ -63,6 +63,7 @@ export function renderSystem(canvas) {
   composer.addPass(bloomPass);
 
   let currentTier = -1;
+  let lowQualityApplied = null;
   const pmrem = new THREE.PMREMGenerator(renderer);
 
   // Luces: una direccional con sombras + ambiente de relleno.
@@ -76,6 +77,7 @@ export function renderSystem(canvas) {
   Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, far: 90 });
   sun.shadow.camera.updateProjectionMatrix();
   scene.add(sun);
+  scene.add(sun.target);   // el objetivo debe estar en la escena para que la sombra lo siga
   
   const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.3);
   scene.add(hemi);
@@ -97,10 +99,9 @@ export function renderSystem(canvas) {
 
   applyPalette(0); // Iniciar con Tier 0
 
-  // Cuadrícula Cyberpunk de Neón
-  const grid = new THREE.GridHelper(140, 70, 0x05d9e8, 0xff2a6d);
-  grid.position.y = -0.1;
-  scene.add(grid);
+  // La cuadrícula de neón vive ahora en el prefab `abyss`, a la altura del
+  // vacío. Dibujarla aquí a y = -0.1 la dejaba flotando bajo unas plataformas
+  // que ya no descansan sobre ningún suelo.
 
   // Contraluz frío: recorta las siluetas contra el fondo.
   const rim = new THREE.DirectionalLight(0x7fb0ff, 0.6);
@@ -140,6 +141,10 @@ export function renderSystem(canvas) {
   let vfxIndex = 0;
 
   function spawnVFX(position, count, colorHex, speedFactor = 1) {
+    // `player:damaged` and friends are public events: anything may raise them,
+    // including a console mod or a future system that has no position to give.
+    // A VFX handler is not a good place to take down the render loop.
+    if (!position) return;
     vfxMat.color.setHex(colorHex);
     for (let i = 0; i < count; i++) {
       const p = vfxData[vfxIndex];
@@ -176,14 +181,41 @@ export function renderSystem(canvas) {
         applyPalette(tier);
       });
       
-      world.events.on('orb:collected', ({ orb }) => spawnVFX(orb.transform.position, 15, 0x05d9e8, 0.8));
-      world.events.on('player:damaged', ({ at }) => spawnVFX(at, 40, 0xff0033, 1.5));
+      world.events.on('orb:collected', ({ orb, tier }) =>
+        spawnVFX(orb.transform.position, tier === 'risk' ? 34 : 15, tier === 'risk' ? 0xb14dff : 0x05d9e8, tier === 'risk' ? 1.2 : 0.8));
+      world.events.on('player:damaged', ({ at, shielded }) =>
+        spawnVFX(at, shielded ? 22 : 40, shielded ? 0x00c8ff : 0xff0033, 1.5));
+      world.events.on('enemy:shattered', ({ at }) => spawnVFX(at, 30, 0xff2a6d, 1.3));
+      world.events.on('enemy:shockwave', ({ at }) => spawnVFX(at, 46, 0xffaa33, 2.0));
+      world.events.on('projectile:impact', ({ at }) => spawnVFX(at, 8, 0xff2a6d, 0.6));
+      world.events.on('player:anchored', ({ at }) => spawnVFX(at, 24, 0x6ee7ff, 0.9));
+      world.events.on('platform:collapsed', (platform) =>
+        spawnVFX(platform.transform.position, 20, 0xff2a6d, 1.0));
+
+      // El telegrafiado también se dibuja: un destello en el sitio exacto desde
+      // el que va a salir el ataque, para que el aviso tenga una posición y no
+      // sólo una duración (REQ-024.23).
+      world.events.on('enemy:telegraph', ({ at }) => spawnVFX(at, 6, 0xffdd55, 0.35));
+      world.events.on('enemy:fired', ({ at }) => spawnVFX(at, 5, 0xff2a6d, 0.5));
 
       window.addEventListener('resize', resize);
       resize();
     },
 
     render(world) {
+      // La sombra sigue al jugador. Con Ciclos de doscientos metros, un frustum
+      // fijo alrededor del origen dejaba el resto del recorrido sin sombras.
+      const hero = world.first('player');
+      if (hero) {
+        sun.position.set(
+          hero.transform.position.x + 18,
+          hero.transform.position.y + 30,
+          hero.transform.position.z + 12,
+        );
+        sun.target.position.copy(hero.transform.position);
+        sun.target.updateMatrixWorld();
+      }
+
       // Sincroniza transform (lógica) -> malla (presentación).
       for (const e of world.query('transform', 'render')) {
         e.render.mesh.position.copy(e.transform.position);
@@ -224,14 +256,18 @@ export function renderSystem(canvas) {
       }
       vfx.instanceMatrix.needsUpdate = true;
       
-      // Aplicar Configuración Gráfica
-      import('../config.js').then(m => {
-        const isLow = m.CONFIG.graphics.lowQuality;
-        renderer.setPixelRatio(isLow ? 1 : Math.min(devicePixelRatio, 2));
-        composer.setPixelRatio(isLow ? 1 : Math.min(devicePixelRatio, 2));
+      // Calidad gráfica. Antes esto era un `import()` dinámico *dentro del bucle
+      // de dibujado*: una promesa nueva por fotograma, resuelta un fotograma
+      // tarde, sólo para leer dos banderas de un módulo ya cargado.
+      const isLow = CONFIG.graphics.lowQuality;
+      if (isLow !== lowQualityApplied) {
+        lowQualityApplied = isLow;
+        const ratio = isLow ? 1 : Math.min(devicePixelRatio, 2);
+        renderer.setPixelRatio(ratio);
+        composer.setPixelRatio(ratio);
         renderer.shadowMap.enabled = !isLow;
-        bloomPass.enabled = !isLow; // Desactivar bloom en low quality
-      });
+        bloomPass.enabled = !isLow;
+      }
 
       composer.render();
     },

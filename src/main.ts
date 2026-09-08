@@ -7,7 +7,8 @@ import { renderSystem } from './systems/render.js';
 import { playerSystem } from './systems/player.js';
 import { enemySystem, interceptorSystem, droneSystem } from './systems/enemy.js';
 import { physicsSystem } from './systems/physics.js';
-import { triggerSystem } from './systems/triggers.js';
+import { triggerSystem, shockwaveSystem } from './systems/triggers.js';
+import { projectileSystem } from './systems/projectile.js';
 import { cameraSystem } from './systems/camera.js';
 import { avatarSystem } from './systems/avatar.js';
 import { particleSystem } from './systems/particles.js';
@@ -31,8 +32,17 @@ Object.assign(world.state, {
   status: 'menu',
   level: 1,
   collected: 0,
+  score: 0,
   totalOrbs: 0,
-  lives: CONFIG.player.lives,
+  integrity: CONFIG.player.lives,
+  maxIntegrity: CONFIG.player.lives,
+  lives: CONFIG.player.lives,   // deprecated mirror of `integrity`
+  combo: 0,
+  comboWindow: 0,
+  dashRatio: 1,
+  shield: false,
+  critical: false,
+  timeScale: 1,
 });
 
 world.addSystem(renderSystem(canvas)); // escena, luces y cámara
@@ -40,8 +50,10 @@ world.addSystem(playerSystem(input));  // intención del jugador -> velocidad
 world.addSystem(enemySystem());        // IA -> velocidad
 world.addSystem(interceptorSystem());
 world.addSystem(droneSystem());
+world.addSystem(projectileSystem());   // balas: trayectoria recta y vida corta
 world.addSystem(physicsSystem());      // velocidad -> posición + colisiones
 world.addSystem(triggerSystem());      // contactos -> eventos de juego
+world.addSystem(shockwaveSystem());    // ondas expansivas de Coloso y Devorador
 world.addSystem(cameraSystem(input));  // seguimiento de cámara
 world.addSystem(avatarSystem());        // vida propia de los modelos
 world.addSystem(particleSystem());      // chispas, polvo y celebraciones
@@ -50,7 +62,9 @@ world.addSystem(powerupsSystem());     // gestor de ventajas temporales
 world.addSystem(hudSystem(engine, input)); // marcadores y menús
 world.addSystem(audioSystem());        // música procedural
 
-// Lógica de Pausa / Ratón
+// Ratón: recuperar el bloqueo del puntero al hacer clic sobre el lienzo.
+// La pausa por teclado la gestiona `src/ui/menu.ts` (Escape), de forma que
+// también funciona en dispositivos sin puntero que bloquear.
 canvas.addEventListener('click', () => {
   if (world.state.status === 'playing') input.requestLock();
 });

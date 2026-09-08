@@ -1,3 +1,5 @@
+import { CONFIG } from '../config.js';
+
 /**
  * Sistema de Audio Procedural.
  *
@@ -180,12 +182,18 @@ export function audioSystem() {
         osc.stop(ctx.currentTime + 0.3);
       });
 
-      world.events.on('player:damaged', ({ player }) => {
+      world.events.on('player:damaged', (payload: any = {}) => {
         if (!ctx || !masterGain) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        
-        if (player.player.lives <= 0) {
+
+        // Read the outcome from the world, not by walking into the payload's
+        // entity. `player:damaged` is a public event and any system — or the
+        // console — may raise it without an entity attached; reaching for
+        // `payload.player.player.lives` turned that into a thrown listener.
+        const remaining = world.state.integrity ?? payload.player?.player?.lives ?? 1;
+
+        if (remaining <= 0) {
           // Death sound (caída de graves y distorsión implícita por onda de sierra fuerte)
           osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(150, ctx.currentTime);
@@ -218,6 +226,51 @@ export function audioSystem() {
         }
       });
 
+      /**
+       * Un golpe de ruido corto y filtrado. Es el molde de casi todos los
+       * efectos nuevos: percusivo, sin cola, y con la frecuencia como única
+       * variable — así cada evento suena distinto sin necesitar una muestra.
+       */
+      const blip = (freqFrom: number, freqTo: number, duration: number, gainPeak: number, type: OscillatorType = 'sine') => {
+        if (!ctx || !masterGain) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freqFrom, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqTo), ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(gainPeak, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+      };
+
+      // Impulso: barrido descendente rápido, la firma del movimiento.
+      world.events.on('player:dash', () => blip(900, 220, 0.22, 0.22, 'sawtooth'));
+
+      // Sombra fracturada: cristal roto — agudo, corto, satisfactorio.
+      world.events.on('enemy:shattered', () => {
+        blip(1800, 400, 0.18, 0.26, 'square');
+        blip(2600, 900, 0.12, 0.14, 'triangle');
+      });
+
+      // Telegrafiado: el aviso también es sonoro. Un jugador que mira al suelo
+      // sigue teniendo derecho a saber que algo está a punto de moverse.
+      world.events.on('enemy:telegraph', () => blip(320, 460, 0.16, 0.09, 'triangle'));
+      world.events.on('enemy:fired', () => blip(680, 180, 0.14, 0.12, 'square'));
+
+      // Baliza anclada: dos notas ascendentes, el único sonido puramente bueno
+      // que emite el juego aparte de recoger un Fragmento.
+      world.events.on('player:anchored', () => {
+        blip(523.25, 523.25, 0.3, 0.2, 'sine');
+        setTimeout(() => blip(783.99, 783.99, 0.4, 0.18, 'sine'), 110);
+      });
+
+      // Plataforma que cae: madera partida, grave y breve.
+      world.events.on('platform:collapsed', () => blip(160, 40, 0.35, 0.18, 'sawtooth'));
+
       world.events.on('game:levelup', () => {
         // Acorde de victoria!
         if (!ctx || !masterGain) return;
@@ -238,15 +291,11 @@ export function audioSystem() {
     },
 
     update() {
-      if (masterGain) {
-        import('../config.js').then(m => {
-          masterGain!.gain.value = m.CONFIG.audio.muted ? 0 : 1;
-        });
-      }
-      
-      if (isPlaying) {
-        schedule();
-      }
+      // Antes esto lanzaba un `import()` dinámico por fotograma para leer una
+      // bandera booleana de un módulo que ya estaba cargado: sesenta promesas
+      // por segundo y el volumen aplicado siempre un fotograma tarde.
+      if (masterGain) masterGain.gain.value = CONFIG.audio.muted ? 0 : 1;
+      if (isPlaying) schedule();
     }
   };
 }

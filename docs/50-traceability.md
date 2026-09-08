@@ -1,7 +1,104 @@
 # Traceability
 
-Every requirement and the test that proves it. A requirement with no passing test is not done.
+Every requirement and the test that proves it. **A requirement with no passing test is not
+done**, whatever the code says.
 
-| Requirement | Test | Type | Last result |
-| :--- | :--- | :--- | :--- |
-| REQ-001 | `tests/test_example.py::test_req_001` | unit | pending |
+Last full run: `npm test` → **9 files, 145 tests, all passing.**
+
+## Physics — `tests/physics.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-024.01 | `sub-steps fast bodies so they cannot tunnel through a thin wall` | integration |
+| REQ-024.02 | `applies the moving-platform carry exactly once per frame` | integration |
+| REQ-024.03 | `publishes the contact normal of the surface underfoot` | integration |
+| REQ-024.04 | `never bounces a resting body off a flat floor` | integration |
+| REQ-024.05 | `preserves tangential velocity when sliding along a wall` | integration |
+| REQ-024.06 | `holds grounded briefly across a seam instead of flickering`, `drops the grounded grace immediately when the body leaps` | integration |
+| REQ-024.07 | `falls faster than it rises`, `hangs at the apex with reduced gravity` | integration |
+| REQ-024.19 (route survives a fall) | `reforms after its respawn delay so a Ciclo stays finishable`, `stops being a surface while it is gone, and falls through`, `waits rather than reforming around a body standing in the hole`, `lets a projectile pass through a collapsed tile` | integration |
+
+## Movement — `tests/player.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-024.08 | `buffers a jump pressed before landing and fires it on contact`, `expires the buffer once the window passes` | unit |
+| REQ-024.09 | `cuts the rise when the jump key is released early`, `does not cut the rise while the key is held` | unit |
+| REQ-024.10 | `measures coyote time in seconds, not frames`, `refuses a jump once coyote time has elapsed` | unit |
+| REQ-024.11 | `dashes along the input direction, not the model facing`, `dashes along camera forward when there is no movement input` | unit |
+| REQ-024.12 | `suspends gravity and grants invulnerability while dashing` | unit |
+| REQ-024.13 | `allows one air dash and refuses the second until landing` | unit |
+| REQ-024.14 | `shatters a Sombra whose integrity reaches zero` (`tests/enemy.test.ts`), `feeds Resonancia from a shattered Sombra as well` (`tests/game.test.ts`) | integration |
+| REQ-024.15 | `caps horizontal speed on the ground as well as in the air`, `raises the speed cap with the Resonancia multiplier` | unit |
+| E-03 | `ignores a held dash key as a repeat input` | unit |
+
+## Level design — `tests/level.test.ts`, `tests/jump-arc.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-024.16 | `exposes at least eight authored chunks`, `declares a complete descriptor for every chunk`, `uses unique ids`, `gates the harder chunks behind a level` | unit |
+| REQ-024.17 | `never places an unreachable jump on the critical path` (30 seeds) + the whole of `tests/jump-arc.test.ts` | property |
+| REQ-024.18 | `never runs more tension chunks back to back than the rhythm allows` (30 seeds), `never repeats a chunk immediately`, `always offers a rest chunk, at every level band` | property |
+| REQ-024.19 | `places at least one Baliza in every Ciclo` (30 seeds); `does not take a layer of Núcleo for falling into the void`, `takes the Resonancia instead, and says so`, `returns Lúmen to the last Baliza, not to the start of the Ciclo`, `grants a moment of grace on reappearing`, `clears an in-flight Impulso when Lúmen reappears` (`tests/game.test.ts`) | property + unit |
+| REQ-024.20 | `offers risk Fragmentos from Ciclo 2 onwards` (30 seeds), `always offers more path Fragmentos than risk ones`, `counts Fragmentos by piece and light by value`, `gives a risk Fragmento twice the Resonancia of a path one` | property + unit |
+| REQ-024.21 | `is deterministic for a given Ciclo`, `produces different Ciclos for different numbers` | unit |
+
+## Enemies — `tests/enemy.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-024.22 | `never telegraphs for less than the fairness floor` (all archetypes) | property |
+| REQ-024.23 | `announces the telegraph so the presentation layer can render a tell` | unit |
+| REQ-024.24 | `fires a bolt from a Centinela and never moves it`; `travels in a straight line at its declared speed`, `expires when its lifetime runs out`, `is destroyed by a solid instead of passing through it` | unit |
+| REQ-024.25 | `moves an Interceptor, which the missing body used to make impossible`, `keeps the escort Dron near the player and lets it stagger a Sombra` | integration |
+| REQ-024.26 | `pushes and damages the player inside the radius`, `leaves a player outside the radius alone`, `still throws an invulnerable player without damaging them` | unit |
+| REQ-024.27 | `runs the Devorador through three phases as its integrity falls` | unit |
+| REQ-024.28 | `suppresses a stunned Sombra`, `survives a hit when it has integrity to spare` | unit |
+| E-08 | `is destroyed immediately when it spawns inside geometry` | unit |
+
+## Interface — `tests/hud.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-024.29 | `renders 120 frames without throwing` (against the real `index.html` body) | integration |
+| REQ-024.30 | `populates the integrity meter instead of leaving it empty`, `renders one segment per point of maximum integrity` | unit |
+| REQ-024.31 | `marks the lost segment as breaking so the chip layer can drain`, `breaks from the right, so damage reads as the bar retreating` | unit |
+| REQ-024.32 | `marks the alarm state at one layer or less`, `turns on the critical vignette at one layer` | unit |
+| REQ-024.33 | `renders the Escudo overlay across the whole bar`, `uses the shield colour when the Escudo absorbs the hit` | unit |
+| REQ-024.34 | `uses a distinct animation when integrity is restored` | unit |
+| REQ-024.35 | `exposes complete meter semantics to assistive tech`, `produces an accessible description for every state` (`tests/integrity.test.ts`) | unit |
+| REQ-024.36 | `drives the Impulso ring from the readiness ratio`, `publishes dash readiness for the HUD` (`tests/player.test.ts`) | unit |
+| REQ-024.37 | `shows the Resonancia dial only above a streak of one` | unit |
+| REQ-024.38 | `tracks Ciclo progress` | unit |
+| REQ-024.39 | `raises a toast for a game event`, `collapses repeated toasts into a count instead of stacking them` | unit |
+| REQ-024.42 | `flashes the damage vignette on a hit` | unit |
+| Dirty check | `writes only when a value actually changed` | unit |
+| E-10 | `rebuilds the row without losing the fill when the maximum changes` | unit |
+
+## Integrity rules — `tests/integrity.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-024.30 | `starts full`, `removes exactly the damage taken`, `clamps over-damage at zero and reports it as lethal` | unit |
+| REQ-024.32 | `flags critical at one layer or less` | unit |
+| REQ-024.33 / E-05 | `absorbs a whole lethal hit with the Escudo and consumes it`, `ignores zero damage without consuming the Escudo`; `lets the Escudo absorb a lethal hit without losing a layer` (`tests/game.test.ts`) | unit |
+| REQ-024.34 | `never repairs above the maximum`, `extends the ceiling and fills the new layer` | unit |
+
+## ECS core — `tests/ecs.test.ts`
+
+| Requirement | Test | Type |
+| :--- | :--- | :--- |
+| REQ-004 | `should spawn entities with incrementing IDs`, `should find entities by components`, `should destroy entities at the end of the frame`, `should execute systems sequentially` | unit |
+
+## Not covered by an automated test
+
+Recorded honestly rather than claimed.
+
+| Requirement | Why | How it was verified |
+| :--- | :--- | :--- |
+| REQ-001 (60 FPS) | Needs real GPU timing; the CI environment is software-rendered | Manual, on target hardware |
+| REQ-002 (one click to play) | Deployment property | Manual, at `https://orbe.naindev.com/` |
+| REQ-003 (touch controls) | jsdom has no touch event model | Manual, on device |
+| REQ-024.40 (Escape pauses) | Needs a real key event through the window listener | Manual |
+| REQ-024.41 (keyboard menus) | Focus behaviour needs a real layout engine; jsdom reports every element as unrendered | Manual |
+| REQ-024.43 / REQ-024.44 (documentation) | Prose | Review against `docs/20-lore.md` §8 and `docs/22-game-design.md` |

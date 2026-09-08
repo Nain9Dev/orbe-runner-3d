@@ -1,282 +1,160 @@
+import { CONFIG } from '../config.js';
+import { createIntegrityMeter } from '../ui/health.js';
+import { createDashRing, createComboDial, createProgress, createPowerupChip, createToasts } from '../ui/widgets.js';
+import { createScreenFx } from '../ui/screen.js';
+import { createMenu } from '../ui/menu.js';
+
 /**
- * HUD y menús: la única parte que toca el DOM.
+ * The binder: ECS world ➜ presentation.
  *
- * Lee `world.state` para los marcadores y escucha eventos `ui:*` para los
- * mensajes. Sustituir esta capa por React, por un canvas 2D o por nada no
- * afecta al resto del juego.
+ * This file used to *be* the interface — 282 lines of DOM construction,
+ * `localStorage`, dynamic `import()` calls inside the render loop and per-frame
+ * layout writes. It also contained the single worst bug in the codebase:
+ *
+ * ```js
+ * el.score.textContent = world.state.collected.toString();
+ * el.total.textContent = world.state.totalOrbs.toString();   // el.total is undefined
+ * ```
+ *
+ * There is no `#hud-total` in the markup, so `el.total` was `undefined` and the
+ * second line threw a `TypeError` **on every frame**. The exception aborted the
+ * rest of `render()` — the Ciclo counter, the FPS readout, the Resonancia, the
+ * Ventaja timer and the entire health bar — and, because systems render in
+ * registration order, it also killed the render phase of every system after this
+ * one. The game looked like it worked because the 3D renderer runs first.
+ *
+ * The fix is not a null check. It is the layer boundary `AGENTS.md` asks for:
+ * widgets live in `src/ui/`, they own their own DOM, and this system does one
+ * thing — read `world.state` and push plain values at them (REQ-024.29).
  */
 export function hudSystem(engine, input) {
   const el = {
     level: document.getElementById('hud-level'),
-    score: document.getElementById('hud-score'),
-    lives: document.getElementById('hud-lives'),
     fps: document.getElementById('hud-fps'),
-    combo: document.getElementById('hud-combo'),
-    overlay: document.getElementById('overlay'),
-    title: document.getElementById('overlay-title'),
-    text: document.getElementById('overlay-text'),
-    button: document.getElementById('start'),
-    touchControls: document.getElementById('touch-controls'),
+    light: document.getElementById('hud-light'),
   };
+
+  const integrity = createIntegrityMeter(document.getElementById('integrity'));
+  const dashRing = createDashRing(
+    document.getElementById('hud-dash-arc') as unknown as SVGCircleElement,
+    document.getElementById('hud-reticle'),
+  );
+  const combo = createComboDial(
+    document.getElementById('hud-combo'),
+    document.getElementById('hud-combo-value'),
+    document.getElementById('hud-combo-arc') as unknown as SVGCircleElement,
+  );
+  const progress = createProgress(
+    document.getElementById('hud-progress'),
+    document.getElementById('hud-progress-fill'),
+    document.getElementById('hud-score'),
+    document.getElementById('hud-total'),
+  );
+  const powerup = createPowerupChip(
+    document.getElementById('hud-powerup'),
+    document.getElementById('hud-powerup-icon'),
+    document.getElementById('hud-powerup-name'),
+    document.getElementById('hud-powerup-time'),
+  );
+  const toasts = createToasts(document.getElementById('hud-toasts'));
+  const fx = createScreenFx();
+
+  // Last written values, so the binder touches the DOM only on a real change.
+  const shown = { level: -1, fps: -1, light: -1 };
 
   return {
     name: 'hud',
 
     init(world) {
-      let pending = { level: parseInt(localStorage.getItem('orbi_level') || '1') };
-      
-      // Leer Configuración
-      const savedColor = localStorage.getItem('orbi_color');
-      const savedMute = localStorage.getItem('orbi_mute') === 'true';
-      const savedGfx = localStorage.getItem('orbi_gfx') === 'true'; // true = Low
-      
-      import('../config.js').then(m => {
-        if (savedColor) m.CONFIG.player.color = parseInt(savedColor, 16);
-        m.CONFIG.audio.muted = savedMute;
-        m.CONFIG.graphics.lowQuality = savedGfx;
-      });
-
-      el.button.disabled = false;
-      el.button.textContent = 'Jugar';
-
-      // Elementos de Ajustes
-      const mainContent = document.querySelector('#overlay > div:first-child');
-      const settingsPanel = document.getElementById('settings-panel');
-      const btnSettings = document.getElementById('btn-settings');
-      const btnSave = document.getElementById('btn-save');
-      const lvlUp = document.getElementById('lvl-up');
-      const lvlDown = document.getElementById('lvl-down');
-      const lvlDisplay = document.getElementById('lvl-display');
-      const colorBtns = document.querySelectorAll('.color-btn');
-      const btnSound = document.getElementById('btn-sound');
-      const btnGfx = document.getElementById('btn-gfx');
-
-      let currentLevel = pending.level;
-      lvlDisplay.textContent = currentLevel;
-
-      // Aplicar estado visual inicial
-      if (savedColor) {
-        colorBtns.forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-checked', 'false');
-          if (b.dataset.color === savedColor) {
-            b.classList.add('active');
-            b.setAttribute('aria-checked', 'true');
-          }
-        });
-      }
-
-      function updateToggleBtn(btn, state, labelOn, labelOff) {
-        if (state) {
-          btn.classList.add('active');
-          btn.textContent = labelOn;
-        } else {
-          btn.classList.remove('active');
-          btn.textContent = labelOff;
-        }
-      }
-
-      updateToggleBtn(btnSound, !savedMute, 'ON', 'OFF');
-      updateToggleBtn(btnGfx, !savedGfx, 'ALTA', 'BAJA');
-
-      // Alternar Paneles
-      btnSettings.addEventListener('click', () => {
-        mainContent.classList.add('hidden');
-        settingsPanel.classList.remove('hidden');
-      });
-
-      btnSave.addEventListener('click', () => {
-        settingsPanel.classList.add('hidden');
-        mainContent.classList.remove('hidden');
-      });
-
-      // Lógica Toggles (Audio / Gfx)
-      let currentMute = savedMute;
-      btnSound.addEventListener('click', () => {
-        currentMute = !currentMute;
-        localStorage.setItem('orbi_mute', currentMute.toString());
-        updateToggleBtn(btnSound, !currentMute, 'ON', 'OFF');
-        import('../config.js').then(m => m.CONFIG.audio.muted = currentMute);
-      });
-
-      let currentGfx = savedGfx;
-      btnGfx.addEventListener('click', () => {
-        currentGfx = !currentGfx;
-        localStorage.setItem('orbi_gfx', currentGfx.toString());
-        updateToggleBtn(btnGfx, !currentGfx, 'ALTA', 'BAJA');
-        import('../config.js').then(m => m.CONFIG.graphics.lowQuality = currentGfx);
-      });
-
-      // Lógica Selector de Nivel
-      lvlUp.addEventListener('click', () => {
-        currentLevel = Math.min(20, currentLevel + 1);
-        lvlDisplay.textContent = currentLevel;
-        pending.level = currentLevel;
-        localStorage.setItem('orbi_level', currentLevel.toString());
-      });
-
-      lvlDown.addEventListener('click', () => {
-        currentLevel = Math.max(1, currentLevel - 1);
-        lvlDisplay.textContent = currentLevel;
-        pending.level = currentLevel;
-        localStorage.setItem('orbi_level', currentLevel.toString());
-      });
-
-      // Lógica Selector de Color
-      colorBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          colorBtns.forEach(b => {
-            b.classList.remove('active');
-            b.setAttribute('aria-checked', 'false');
-          });
-          const target = e.target as HTMLElement;
-          target.classList.add('active');
-          target.setAttribute('aria-checked', 'true');
-          const colorHex = target.dataset.color;
-          localStorage.setItem('orbi_color', colorHex);
-          import('../config.js').then(m => m.CONFIG.player.color = parseInt(colorHex, 16));
-        });
-      });
-
-      el.button.addEventListener('click', () => {
-        input.requestLock();
-        if (world.state.status === 'paused') {
+      const menu = createMenu({
+        onStart: (pending) => {
+          input.requestLock();
+          world.events.emit('game:start', pending);
+        },
+        onResume: () => {
+          input.requestLock();
           world.state.status = 'playing';
           world.events.emit('ui:hide');
-        } else {
-          world.events.emit('game:start', pending);
-        }
+        },
+        isPaused: () => world.state.status === 'paused',
+        isPlaying: () => world.state.status === 'playing',
+        requestPause: () => {
+          world.state.status = 'paused';
+          world.events.emit('ui:pause');
+        },
       });
 
-      world.events.on('ui:message', ({ title, text, button, action, theme }) => {
-        el.title.textContent = title;
-        // Limpiamos las clases anteriores y asignamos la del tema
-        el.title.className = theme ? `title-${theme}` : '';
-        
-        el.text.textContent = text;
-        el.button.hidden = !button;
-        if (button) el.button.textContent = button;
-        if (action) {
-            pending = action;
-            currentLevel = pending.level;
-            lvlDisplay.textContent = currentLevel;
-        }
-        
-        // Reset animación forzando reflow para que vuelva a hacer el fadeSlideUp
-        const panel = el.overlay.querySelector('.panel') as HTMLElement;
-        if (panel) {
-          panel.style.animation = 'none';
-          void panel.offsetWidth; // force reflow
-          panel.style.animation = '';
-        }
+      world.events.on('ui:message', (payload) => { toasts.clear(); menu.message(payload); });
+      world.events.on('ui:pause', () => menu.pause());
+      world.events.on('ui:hide', () => { fx.reset(); menu.hide(); });
+      world.events.on('ui:toast', ({ text, tone }) => toasts.push(text, tone));
 
-        el.overlay.classList.remove('hidden');
-        mainContent.classList.remove('hidden');
-        settingsPanel.classList.add('hidden');
-        el.touchControls?.classList.add('hidden');
+      world.events.on('player:damaged', ({ shielded, lost, critical }) => {
+        if (shielded) {
+          fx.shieldBreak();
+          integrity.onShieldBreak();
+          return;
+        }
+        // The flash scales with the size of the hit: a Devorador slam takes three
+        // layers and should not look like a graze from a Rastreador.
+        fx.damage(0.35 + Math.min(1, (lost ?? 1) / 3) * 0.65);
+        integrity.onDamage(lost ?? 1);
+        if (critical) toasts.push('NÚCLEO CRÍTICO', 'bad');
       });
 
-      world.events.on('ui:pause', () => {
-        el.title.textContent = 'SISTEMA EN PAUSA';
-        el.title.className = ''; // Tema default
-        el.text.textContent = 'Ajustes, estado y núcleo de Lúmen.';
-        el.button.textContent = 'REANUDAR';
-        el.button.hidden = false;
-        el.overlay.classList.remove('hidden');
-        mainContent.classList.remove('hidden');
-        settingsPanel.classList.add('hidden');
-        el.touchControls?.classList.add('hidden');
+      world.events.on('level:built', ({ level }) => {
+        toasts.clear();
+        toasts.push(`CICLO ${level}`, 'info');
       });
 
-      world.events.on('ui:hide', () => {
-        el.overlay.classList.add('hidden');
-        el.touchControls?.classList.remove('hidden');
+      // The void is a distinct kind of setback and gets a distinct read: a blue
+      // flash, not the red one, because nothing was taken from the Núcleo.
+      world.events.on('player:voided', () => fx.shieldBreak());
+
+      world.events.on('combo:lost', () => {
+        if ((world.state.combo ?? 0) >= 5) toasts.push('RESONANCIA PERDIDA', 'warn');
       });
     },
 
+    /**
+     * Runs once per rendered frame, not once per logic step. Every widget
+     * dirty-checks, so a 144 Hz display costs the same DOM work as a 30 Hz one.
+     */
     render(world) {
-      el.score.textContent = world.state.collected.toString();
-      el.total.textContent = world.state.totalOrbs.toString();
-      el.level.textContent = 'Nivel ' + world.state.level;
-      if (engine.fps !== undefined) {
-        el.fps.textContent = `${engine.fps} FPS`;
-      }
-      
-      // Mostrar Combo
-      if (world.state.combo > 1) {
-        if (el.combo) {
-          el.combo.textContent = `COMBO x${world.state.combo}`;
-          el.combo.style.display = 'block';
-          const scale = 1.0 + (world.state.combo * 0.05) + Math.sin(Date.now() / 100) * 0.1;
-          el.combo.style.transform = `scale(${Math.min(scale, 1.5)})`;
-        }
-      } else {
-        if (el.combo) el.combo.style.display = 'none';
-      }
-      
-      const powerupEl = document.getElementById('hud-powerup');
-      if (powerupEl) {
-        const player = world.first('player');
-        if (player && player.player.buff) {
-          const type = player.player.buff.type;
-          const time = Math.ceil(player.player.buff.timeleft);
-          let text = '';
-          if (type === 'shield') text = '🛡️ Escudo';
-          if (type === 'magnet') text = '🧲 Imán';
-          if (type === 'jump') text = '🚀 Súper Salto';
-          if (type === 'time') text = '⏳ Cámara Lenta';
-          powerupEl.textContent = `${text} (${time}s)`;
-          powerupEl.style.display = 'inline-block';
-        } else {
-          powerupEl.style.display = 'none';
-        }
-      }
-      
-      // Sincronizar Pips de Vida
-      const pipsContainer = document.getElementById('health-pips');
-      if (pipsContainer) {
-        // Asegurar que hay suficientes pips en el DOM
-        import('../config.js').then(m => {
-          const maxLives = m.CONFIG.player.lives;
-          const currentLives = world.state.lives;
-          const colorHex = '#' + m.CONFIG.player.color.toString(16).padStart(6, '0');
+      const state = world.state;
 
-          while (pipsContainer.children.length < maxLives) {
-            const pip = document.createElement('div');
-            pip.className = 'health-pip';
-            pipsContainer.appendChild(pip);
-          }
-
-          // Actualizar estado (activo/inactivo) y color de los pips
-          for (let i = 0; i < maxLives; i++) {
-            const pip = pipsContainer.children[i] as HTMLElement;
-            if (i < currentLives) {
-              pip.classList.add('active');
-              pip.style.background = colorHex;
-              pip.style.boxShadow = `0 0 8px ${colorHex}`;
-            } else {
-              pip.classList.remove('active');
-              pip.style.background = 'rgba(255, 255, 255, 0.2)';
-              pip.style.boxShadow = 'none';
-            }
-          }
-        });
+      if (state.level !== shown.level) {
+        if (el.level) el.level.textContent = `CICLO ${state.level}`;
+        shown.level = state.level;
       }
 
-      if (world.state.status === 'playing') {
-        el.overlay.classList.add('hidden');
-      } else {
-        el.overlay.classList.remove('hidden');
-        if (world.state.status === 'won') {
-          el.title.textContent = '¡Fragmentos Recuperados!';
-          el.text.textContent = 'Nivel ' + world.state.level + ' completado.';
-          el.button.textContent = 'Siguiente Nivel';
-        } else if (world.state.status === 'lost') {
-          el.title.textContent = 'La luz se ha desvanecido';
-          el.text.textContent = 'Las Sombras te atraparon.';
-          el.button.textContent = 'Reintentar Nivel ' + world.state.level;
-        }
+      const light = state.score ?? 0;
+      if (light !== shown.light) {
+        if (el.light) el.light.textContent = String(light);
+        shown.light = light;
       }
+
+      const fps = engine?.fps ?? 0;
+      if (fps !== shown.fps) {
+        if (el.fps) el.fps.textContent = `${fps} FPS`;
+        shown.fps = fps;
+      }
+
+      progress.sync(state.collected ?? 0, state.totalOrbs ?? 0);
+      combo.sync(state.combo ?? 0, state.comboWindow ?? 0);
+      dashRing.sync(state.dashRatio ?? 1, !!state.dashing);
+      powerup.sync(state.buff?.type ?? null, state.buff?.timeleft ?? 0);
+
+      integrity.sync({
+        current: state.integrity ?? state.lives ?? 0,
+        max: state.maxIntegrity ?? CONFIG.player.lives,
+        shield: !!state.shield,
+        critical: !!state.critical,
+        color: `#${(CONFIG.player.color >>> 0).toString(16).padStart(6, '0')}`,
+      });
+
+      fx.setCritical(!!state.critical && state.status === 'playing');
+      fx.setDashing(!!state.dashing);
     },
   };
 }

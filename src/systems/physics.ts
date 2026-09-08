@@ -7,11 +7,36 @@ const relVel = new THREE.Vector3();
 const deltaPos = new THREE.Vector3();
 
 /**
- * Motor de Físicas 2.0 (Spec 017)
- * - Múltiples iteraciones para estabilidad
- * - Colisiones Esfera-Caja con rebote (restitución)
- * - Colisiones Esfera-Esfera con intercambio de masas
- * - Fricción estandarizada
+ * Physics engine 3.0 (Spec 024).
+ *
+ * What changed from 2.0, and why:
+ *
+ *  - **Sub-stepped integration.** A dashing Lúmen travels 0.57 u per 60 Hz frame
+ *    while the perimeter walls are 1 u thick and its own radius is 0.6 u. That is
+ *    close enough to the tunnelling threshold that it happened in practice. The
+ *    integrator now splits the frame so that no body advances more than half its
+ *    radius per sub-step (REQ-024.01).
+ *
+ *  - **Carry applied once.** Standing on a moving platform used to displace the
+ *    body once per solver iteration, i.e. three times per frame, so platforms
+ *    flung the player. The delta is now accumulated in `body.carry` and applied
+ *    after the solver, exactly once (REQ-024.02).
+ *
+ *  - **Grounding is a state, not an instant.** `body.grounded` is held for
+ *    `groundStickTime` after contact is lost while not moving upwards, which kills
+ *    the flicker that made stairs feel like a stutter (REQ-024.06). The contact
+ *    normal is published so the movement code can align to slopes (REQ-024.03).
+ *
+ *  - **No bounce on floors, full slide on walls.** Restitution along a ground
+ *    normal is suppressed, so Lúmen settles instead of jittering; against a wall
+ *    only the normal component is removed, so the tangential speed survives and
+ *    the player slides along geometry instead of sticking to it
+ *    (REQ-024.04, REQ-024.05).
+ *
+ *  - **Asymmetric gravity.** Rising, hanging and falling use different gravity
+ *    scales (REQ-024.07). This is the single biggest contributor to how the jump
+ *    reads, and it is why `src/domain/jump-arc.ts` needs the fall multiplier to
+ *    predict reach correctly.
  */
 export function physicsSystem() {
   return {
@@ -21,93 +46,227 @@ export function physicsSystem() {
       const solids = world.find('solid', 'transform');
       const bodies = world.find('transform', 'body');
 
-      // 0. Update Moving Platforms
-      for (const s of solids) {
-        if (s.moving) {
-          s.moving.t = (s.moving.t || 0) + dt * s.moving.speed;
-          const offset = Math.sin(s.moving.t) * s.moving.range;
-          const oldX = s.transform.position.x;
-          const oldZ = s.transform.position.z;
-          
-          if (s.moving.axis === 'x') {
-            s.transform.position.x = s.moving.origin.x + offset;
-          } else {
-            s.transform.position.z = s.moving.origin.z + offset;
-          }
-          
-          s.moving.dx = s.transform.position.x - oldX;
-          s.moving.dz = s.transform.position.z - oldZ;
-        }
+      movePlatforms(solids, dt);
+
+      // How finely must this frame be sliced so nothing tunnels?
+      const steps = requiredSubSteps(bodies, dt);
+      const h = dt / steps;
+
+      for (let step = 0; step < steps; step++) {
+        integrate(world, bodies, h);
+        solve(bodies, solids);
+        applyCarry(bodies);
       }
 
-      // 1. Gravedad, Fricción e Integración.
-      for (const e of bodies) {
-        const { body, transform } = e;
-
-        // Fricción y Arrastre (si no las define el cuerpo, valores por defecto ágiles)
-        if (body.grounded) {
-          const friction = body.friction ?? 12; 
-          body.velocity.x -= body.velocity.x * Math.min(1, friction * dt);
-          body.velocity.z -= body.velocity.z * Math.min(1, friction * dt);
-        } else {
-          const drag = body.drag ?? 1;
-          body.velocity.x -= body.velocity.x * Math.min(1, drag * dt);
-          body.velocity.z -= body.velocity.z * Math.min(1, drag * dt);
-        }
-
-        // Gravedad
-        body.velocity.y += CONFIG.world.gravity * dt;
-
-        // Integrar velocidad
-        transform.position.addScaledVector(body.velocity, dt);
-        
-        // Reset state for this frame
-        body.grounded = false;
-        
-        // Red de seguridad
-        if (transform.position.y < -25) world.events.emit('body:fell', e);
-      }
-
-      // 2. Resolución iterativa de colisiones (3 pasadas para estabilizar esquinas y apilamientos)
-      const ITERATIONS = 3;
-      for (let i = 0; i < ITERATIONS; i++) {
-        
-        // Colisiones dinámicas (Cuerpo vs Cuerpo)
-        const bodyArray = Array.from(bodies);
-        for (let j = 0; j < bodyArray.length; j++) {
-          for (let k = j + 1; k < bodyArray.length; k++) {
-            resolveSphereSphere(bodyArray[j], bodyArray[k]);
-          }
-        }
-
-        // Colisiones estáticas (Cuerpo vs Cajas)
-        for (const e of bodies) {
-          for (const s of solids) {
-            resolveSphereBox(e, s);
-          }
-        }
-      }
-
-      // 3. Actualizar Plataformas Inestables
-      for (const s of solids) {
-        if (s.crumbling && s.crumbling.state === 'crumbling') {
-          s.crumbling.timer -= dt;
-          
-          // Efecto visual: parpadeo o hundimiento ligero
-          if (s.render && s.render.mesh) {
-            // Vibra ligeramente o cambia el emisivo
-            const m = s.render.mesh;
-            m.position.y += (Math.random() - 0.5) * 0.05;
-          }
-
-          if (s.crumbling.timer <= 0) {
-            world.destroy(s);
-          }
-        }
-      }
+      settleGrounding(bodies, dt);
+      updateCrumbling(world, solids, dt);
     },
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Integration                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sub-step count for this frame: enough that the fastest body moves at most
+ * `maxTravelPerStep` of its own radius per step, capped so a stalled tab cannot
+ * turn into thousands of iterations.
+ */
+function requiredSubSteps(bodies, dt) {
+  let worst = 1;
+  for (const e of bodies) {
+    const b = e.body;
+    const speed = Math.hypot(b.velocity.x, b.velocity.y, b.velocity.z);
+    const budget = Math.max(0.05, b.radius * CONFIG.physics.maxTravelPerStep);
+    const needed = Math.ceil((speed * dt) / budget);
+    if (needed > worst) worst = needed;
+  }
+  return Math.min(Math.max(1, worst), CONFIG.physics.maxSubSteps);
+}
+
+function integrate(world, bodies, dt) {
+  for (const e of bodies) {
+    const { body, transform } = e;
+
+    // `damped` means a controller already resolved this body's horizontal
+    // velocity for the frame. Damping it a second time here is what made the
+    // player's steady-state speed a quarter lower than the configured one.
+    if (!body.damped) {
+      const rate = body.grounded ? (body.friction ?? 12) : (body.drag ?? 1);
+      const k = Math.min(1, rate * dt);
+      body.velocity.x -= body.velocity.x * k;
+      body.velocity.z -= body.velocity.z * k;
+    }
+
+    // A dash owns its own trajectory: no gravity, no drag on the vertical axis.
+    if (!body.noGravity) {
+      body.velocity.y += CONFIG.world.gravity * gravityScale(body.velocity.y) * dt;
+    }
+
+    transform.position.addScaledVector(body.velocity, dt);
+
+    body.contact = false;               // reset per sub-step
+    if (!body.carry) body.carry = new THREE.Vector3();
+
+    if (transform.position.y < CONFIG.world.voidY) world.events.emit('body:fell', e);
+  }
+}
+
+/**
+ * Gravity is scaled by flight phase: light on the rise, lighter still around the
+ * apex (hang time to aim), heavy on the way down (a snappy landing).
+ */
+function gravityScale(vy) {
+  const { fallGravityMultiplier, apexGravityMultiplier, apexThreshold } = CONFIG.world;
+  if (Math.abs(vy) < apexThreshold) return apexGravityMultiplier;
+  return vy < 0 ? fallGravityMultiplier : 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Solver                                                                      */
+/* -------------------------------------------------------------------------- */
+
+function solve(bodies, solids) {
+  for (let i = 0; i < CONFIG.physics.iterations; i++) {
+    for (let j = 0; j < bodies.length; j++) {
+      for (let k = j + 1; k < bodies.length; k++) {
+        resolveSphereSphere(bodies[j], bodies[k]);
+      }
+    }
+    for (const e of bodies) {
+      for (const s of solids) {
+        resolveSphereBox(e, s, i === 0);
+      }
+    }
+  }
+}
+
+/** Displacement owed by moving platforms, applied exactly once (REQ-024.02). */
+function applyCarry(bodies) {
+  for (const e of bodies) {
+    if (!e.body.carry) continue;
+    e.transform.position.add(e.body.carry);
+    e.body.carry.set(0, 0, 0);
+  }
+}
+
+/**
+ * Grounding hysteresis. `body.contact` is the raw answer from the solver;
+ * `body.grounded` is the answer the gameplay code sees, held briefly so that a
+ * one-frame gap between two platforms does not read as falling (REQ-024.06).
+ */
+function settleGrounding(bodies, dt) {
+  for (const e of bodies) {
+    const b = e.body;
+    if (b.contact) {
+      b.groundTimer = 0;
+      b.grounded = true;
+      continue;
+    }
+    b.groundTimer = (b.groundTimer ?? Infinity) + dt;
+    // Moving upwards means the body left on purpose: drop the grace immediately.
+    const leaping = b.velocity.y > 0.5;
+    b.grounded = !leaping && b.groundTimer < CONFIG.physics.groundStickTime;
+  }
+}
+
+function movePlatforms(solids, dt) {
+  for (const s of solids) {
+    if (!s.moving) continue;
+    s.moving.t = (s.moving.t || 0) + dt * s.moving.speed;
+    const offset = Math.sin(s.moving.t) * s.moving.range;
+    const before = s.moving.axis === 'x' ? s.transform.position.x : s.transform.position.z;
+
+    if (s.moving.axis === 'x') {
+      s.transform.position.x = s.moving.origin.x + offset;
+      s.moving.dx = s.transform.position.x - before;
+      s.moving.dz = 0;
+    } else {
+      s.transform.position.z = s.moving.origin.z + offset;
+      s.moving.dz = s.transform.position.z - before;
+      s.moving.dx = 0;
+    }
+  }
+}
+
+/**
+ * Collapsing platforms: touch → shake → fall away → **reform**.
+ *
+ * The first implementation destroyed the entity outright, and that made a whole
+ * chunk of the game unwinnable. The Sendero Efímero is five collapsing tiles in
+ * a row; the Baliza that covers it sits *before* it. Cross the gauntlet, miss the
+ * next jump, respawn at the Baliza — and the route you came through no longer
+ * exists. The Ciclo becomes impossible to finish and the only way out is to die
+ * on purpose. A scripted route-follower reproduced it as 55 consecutive falls on
+ * Ciclo 3.
+ *
+ * Reforming after `respawn` seconds keeps the tile a real hazard — you still
+ * cannot stop on it, and it is still gone when you need it a second later — while
+ * making the mistake recoverable, which is the same principle as ADR-008.
+ */
+function updateCrumbling(world, solids, dt) {
+  for (const s of solids) {
+    const c = s.crumbling;
+    if (!c) continue;
+
+    if (c.state === 'crumbling') {
+      c.timer -= dt;
+
+      // Visual tell: the closer to collapse, the harder it shakes.
+      if (s.render?.mesh) {
+        const panic = 1 - Math.max(0, c.timer) / (c.duration ?? 1.5);
+        const amp = 0.02 + panic * 0.06;
+        s.render.mesh.position.x += (Math.random() - 0.5) * amp;
+        s.render.mesh.position.z += (Math.random() - 0.5) * amp;
+      }
+
+      if (c.timer <= 0) {
+        c.state = 'gone';
+        c.timer = c.respawn ?? 2.5;
+        if (s.render?.mesh) s.render.mesh.visible = false;
+        world.events.emit('platform:collapsed', s);
+      }
+      continue;
+    }
+
+    if (c.state !== 'gone') continue;
+
+    c.timer -= dt;
+    if (c.timer > 0) continue;
+
+    // Never reform underneath something standing in the hole: materialising a
+    // box around a body leaves the solver to eject it through the nearest face,
+    // which reads as the platform launching the player sideways.
+    if (occupied(world, s)) { c.timer = 0.3; continue; }
+
+    c.state = 'idle';
+    c.timer = c.duration ?? 1.5;
+    if (s.render?.mesh) {
+      s.render.mesh.visible = true;
+      s.render.mesh.position.copy(s.transform.position);
+    }
+    world.events.emit('platform:restored', s);
+  }
+}
+
+/** Is any physics body inside the volume this platform is about to reclaim? */
+function occupied(world, solidEntity) {
+  const c = solidEntity.transform.position;
+  const size = solidEntity.solid.size;
+  for (const e of world.query('transform', 'body')) {
+    const p = e.transform.position;
+    const r = e.body.radius;
+    if (Math.abs(p.x - c.x) < size.x / 2 + r &&
+        Math.abs(p.y - c.y) < size.y / 2 + r &&
+        Math.abs(p.z - c.z) < size.z / 2 + r) return true;
+  }
+  return false;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contacts                                                                    */
+/* -------------------------------------------------------------------------- */
 
 function resolveSphereSphere(eA, eB) {
   const pA = eA.transform.position;
@@ -118,41 +277,41 @@ function resolveSphereSphere(eA, eB) {
   deltaPos.subVectors(pA, pB);
   const dist = deltaPos.length();
   const minDist = bA.radius + bB.radius;
-
-  if (dist > minDist || dist === 0) return; // No hay colisión
+  if (dist > minDist || dist === 0) return;
 
   const depth = minDist - dist;
-  normal.copy(deltaPos).divideScalar(dist); // Dirección de B a A
+  normal.copy(deltaPos).divideScalar(dist);   // points from B towards A
 
-  const mA = bA.mass ?? 1;
-  const mB = bB.mass ?? 1;
-  const totalMass = mA + mB;
-  const invMassA = 1 / mA;
-  const invMassB = 1 / mB;
-  const invTotalMass = invMassA + invMassB;
+  const invMassA = 1 / (bA.mass ?? 1);
+  const invMassB = 1 / (bB.mass ?? 1);
+  const invTotal = invMassA + invMassB;
 
-  // Separar cuerpos proporcional a sus masas
-  const ratioA = invMassA / invTotalMass;
-  const ratioB = invMassB / invTotalMass;
-  
-  pA.addScaledVector(normal, depth * ratioA);
-  pB.addScaledVector(normal, -depth * ratioB);
+  pA.addScaledVector(normal, depth * (invMassA / invTotal));
+  pB.addScaledVector(normal, -depth * (invMassB / invTotal));
 
-  // Intercambio de impulsos (rebote elástico)
   relVel.subVectors(bA.velocity, bB.velocity);
-  const velAlongNormal = relVel.dot(normal);
-
-  // Si ya se están separando, no aplicamos impulso
-  if (velAlongNormal > 0) return;
+  const along = relVel.dot(normal);
+  if (along > 0) return;                       // already separating
 
   const bounciness = Math.min(bA.bounciness ?? 0.1, bB.bounciness ?? 0.1);
-  const j = -(1 + bounciness) * velAlongNormal / invTotalMass;
+  const j = (-(1 + bounciness) * along) / invTotal;
 
   bA.velocity.addScaledVector(normal, j * invMassA);
   bB.velocity.addScaledVector(normal, -j * invMassB);
 }
 
-function resolveSphereBox(bodyEntity, solidEntity) {
+/**
+ * Sphere against axis-aligned box.
+ *
+ * `first` marks the opening solver iteration: side effects that must happen once
+ * per sub-step (arming a crumbling platform, banking the platform carry, firing
+ * a bounce pad) are gated on it, so running three iterations no longer triples
+ * the impulse.
+ */
+function resolveSphereBox(bodyEntity, solidEntity, first) {
+  // A collapsed tile is still an entity, but it is not a surface.
+  if (solidEntity.crumbling?.state === 'gone') return;
+
   const position = bodyEntity.transform.position;
   const body = bodyEntity.body;
   const boxCenter = solidEntity.transform.position;
@@ -170,7 +329,6 @@ function resolveSphereBox(bodyEntity, solidEntity) {
 
   normal.subVectors(position, closest);
   const distance = normal.length();
-
   if (distance > body.radius) return;
 
   let depth;
@@ -178,7 +336,7 @@ function resolveSphereBox(bodyEntity, solidEntity) {
     normal.divideScalar(distance);
     depth = body.radius - distance;
   } else {
-    // Centro atrapado dentro de la caja: salimos por la cara más próxima.
+    // Centre trapped inside the box: leave through the nearest face.
     const dx = hx + body.radius - Math.abs(position.x - boxCenter.x);
     const dy = hy + body.radius - Math.abs(position.y - boxCenter.y);
     const dz = hz + body.radius - Math.abs(position.z - boxCenter.z);
@@ -194,35 +352,47 @@ function resolveSphereBox(bodyEntity, solidEntity) {
     }
   }
 
-  // Separación
   position.addScaledVector(normal, depth);
 
-  // Restitución contra muros estáticos (asumimos masa infinita para la pared)
+  const isFloor = normal.y > 0.5;
   const into = body.velocity.dot(normal);
+
   if (into < 0) {
-    const bounciness = body.bounciness ?? 0;
-    body.velocity.addScaledVector(normal, -into * (1 + bounciness));
+    if (isFloor) {
+      // Never bounce off the ground: cancel the normal component exactly.
+      // The tangential component is untouched, so momentum survives the landing.
+      body.velocity.addScaledVector(normal, -into);
+    } else {
+      // Walls: remove the normal component, keep the slide (REQ-024.05).
+      const bounciness = body.wallBounce ?? 0;
+      body.velocity.addScaledVector(normal, -into * (1 + bounciness));
+    }
   }
 
-  // Si nos expulsa hacia arriba, consideramos que estamos en el suelo
-  if (normal.y > 0.5) {
-    body.grounded = true;
-    
-    // Si pisamos un Bounce Pad, salimos volando
-    if (solidEntity.bounce) {
-      body.velocity.y = solidEntity.bounce.force;
-      body.grounded = false; // Dejamos de estar en el suelo inmediatamente
-    }
-    
-    // Si pisamos una plataforma inestable, activar contador
-    if (solidEntity.crumbling && solidEntity.crumbling.state === 'idle') {
-      solidEntity.crumbling.state = 'crumbling';
-    }
-    
-    // Si pisamos una plataforma móvil, arrastrarnos con ella
-    if (solidEntity.moving) {
-      bodyEntity.transform.position.x += solidEntity.moving.dx;
-      bodyEntity.transform.position.z += solidEntity.moving.dz;
-    }
+  if (!isFloor) return;
+
+  body.contact = true;
+  if (!body.groundNormal) body.groundNormal = new THREE.Vector3();
+  body.groundNormal.copy(normal);
+
+  if (!first) return;   // everything below is a once-per-sub-step effect
+
+  if (solidEntity.bounce) {
+    body.velocity.y = solidEntity.bounce.force;
+    body.contact = false;
+    body.grounded = false;
+    body.groundTimer = Infinity;
+    solidEntity.bounce.firedAt = solidEntity.bounce.firedAt ?? 0;
+    solidEntity.bounce.pulse = 1;
+  }
+
+  if (solidEntity.crumbling && solidEntity.crumbling.state === 'idle') {
+    solidEntity.crumbling.state = 'crumbling';
+  }
+
+  if (solidEntity.moving) {
+    if (!body.carry) body.carry = new THREE.Vector3();
+    body.carry.x += solidEntity.moving.dx || 0;
+    body.carry.z += solidEntity.moving.dz || 0;
   }
 }

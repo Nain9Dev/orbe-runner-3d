@@ -36,6 +36,7 @@ export function particleSystem({ max = 260 } = {}) {
 
   /** Lanza `count` chispas desde `origin`. */
   function burst(origin, hex, count, { speed = 3.5, spread = 1, up = 1, ttl = 0.7 } = {}) {
+    if (!origin) return;   // see the note in render.ts::spawnVFX
     color.set(hex);
     for (let n = 0; n < count; n++) {
       const i = cursor;
@@ -81,8 +82,30 @@ export function particleSystem({ max = 260 } = {}) {
         burst(player.transform.position, 0x8ff2ff, 8, { speed: 1.4, spread: 1.3, up: 0.2, ttl: 0.35 });
       });
       world.events.on('player:dash', (player) => {
-        // Estela horizontal brillante de partículas hacia atrás del movimiento
+        // Estela horizontal brillante hacia atrás del movimiento.
         burst(player.transform.position, 0xffaa00, 25, { speed: 2.5, spread: 0.5, up: 0.1, ttl: 0.6 });
+      });
+
+      // Vocabulario nuevo de la spec 024.
+      world.events.on('enemy:shattered', ({ at }) => {
+        burst(at, 0xff2a6d, 30, { speed: 6, spread: 1.2, ttl: 0.8 });
+      });
+      world.events.on('enemy:telegraph', ({ at }) => {
+        burst(at, 0xffdd55, 8, { speed: 1.2, spread: 1.4, up: 0.6, ttl: 0.5 });
+      });
+      world.events.on('player:anchored', ({ at }) => {
+        burst(at, 0x6ee7ff, 26, { speed: 3, spread: 1.5, up: 1.4, ttl: 1.0 });
+      });
+      world.events.on('platform:collapsed', (platform) => {
+        burst(platform.transform.position, 0xff2a6d, 18, { speed: 2, spread: 1.6, up: 0.3, ttl: 0.9 });
+      });
+      world.events.on('particles:burst', ({ pos, color, count }) => {
+        burst(pos, color ?? 0xffffff, count ?? 10, { speed: 3, ttl: 0.6 });
+      });
+      world.events.on('particles:shockwave', ({ at, radius }) => {
+        // Anillo plano: la onda expansiva tiene que leerse como un radio, no
+        // como una explosión esférica, porque su alcance es exactamente eso.
+        burst(at, 0xffaa33, 42, { speed: (radius ?? 6) * 1.6, spread: 2.4, up: 0.12, ttl: 0.75 });
       });
     },
 

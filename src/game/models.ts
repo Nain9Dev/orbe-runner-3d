@@ -737,15 +737,28 @@ export function createHunter({ radius: r = 0.7, type = 'tracker', tier = 0 } = {
  * Un cristal dentro de una jaula giroscópica. Se ve desde lejos gracias al
  * halo, que es lo que hace que apetezca ir a por él.
  * ------------------------------------------------------------------------- */
-export function createOrbGem({ radius: r = 0.55 } = {}) {
+/**
+ * Fragmento de Estrella.
+ *
+ * `tier` decides how loud it is. A `risk` Fragmento is worth three times a
+ * `path` one and is always somewhere that costs something to reach, so it has to
+ * announce itself from far enough away that the player can decide *before*
+ * committing to the detour: violet instead of amber, a taller light pillar and a
+ * faster spin. Readability at distance is the whole design of this object.
+ */
+export function createOrbGem({ radius: r = 0.55, tier = 'path' } = {}) {
   const group = new THREE.Group();
+  const risky = tier === 'risk';
+  const coreColor = risky ? 0xe9c4ff : 0xffe6a3;
+  const glowColor = risky ? 0xb14dff : 0xffc861;
+  const emissive = risky ? 0x9b30ff : 0xffb020;
 
   const gem = new THREE.Mesh(
-    once('orbGemGeo', () => new THREE.OctahedronGeometry(r * 0.95, 0)),
-    once('orbGemMat', () => new THREE.MeshStandardMaterial({
-      color: 0xffe6a3,
-      emissive: new THREE.Color(0xffb020),
-      emissiveIntensity: 0.8,
+    once(`orbGemGeo_${tier}`, () => new THREE.OctahedronGeometry(r * 0.95, 0)),
+    once(`orbGemMat_${tier}`, () => new THREE.MeshStandardMaterial({
+      color: coreColor,
+      emissive: new THREE.Color(emissive),
+      emissiveIntensity: risky ? 1.1 : 0.8,
       roughness: 0.2,
       metalness: 0.3,
       flatShading: true,
@@ -755,10 +768,10 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
   group.add(gem);
 
   // Jaula: dos aros cruzados que giran en sentidos distintos.
-  const ringGeo = once('orbRingGeo', () => new THREE.TorusGeometry(r * 1.15, r * 0.06, 8, 28));
-  const ringMat = once('orbRingMat', () => new THREE.MeshStandardMaterial({
-    color: 0xfff1cf,
-    emissive: new THREE.Color(0xffc44d),
+  const ringGeo = once(`orbRingGeo_${tier}`, () => new THREE.TorusGeometry(r * 1.15, r * 0.06, 8, 28));
+  const ringMat = once(`orbRingMat_${tier}`, () => new THREE.MeshStandardMaterial({
+    color: risky ? 0xf0dcff : 0xfff1cf,
+    emissive: new THREE.Color(glowColor),
     emissiveIntensity: 0.6,
     metalness: 1,
     roughness: 0.25,
@@ -770,7 +783,7 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
 
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({
     map: glowTexture(),
-    color: 0xffc861,
+    color: glowColor,
     transparent: true,
     opacity: 0.2,
     blending: THREE.AdditiveBlending,
@@ -779,16 +792,17 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
   halo.scale.setScalar(r * 2.8);
   group.add(halo);
 
-  // Pilar de luz hacia el cielo (Fino para parecer rayo, no ovalo masivo)
+  // A thin beam towards the sky: this is what makes a Fragmento visible over a
+  // ledge you cannot see past. Risk Fragmentos throw it higher on purpose.
   const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
     map: glowTexture(),
-    color: 0xffc861,
+    color: glowColor,
     transparent: true,
     opacity: 0.15,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   }));
-  pillar.scale.set(r * 0.6, r * 30, 1);
+  pillar.scale.set(r * 0.6, r * (risky ? 46 : 30), 1);
   pillar.position.y = r * 10;
   group.add(pillar);
 
@@ -800,15 +814,16 @@ export function createOrbGem({ radius: r = 0.55 } = {}) {
 
     update(dt) {
       t += dt;
-      gem.rotation.y += dt * 1.4;
-      gem.rotation.x += dt * 0.5;
-      ringA.rotation.z += dt * 0.9;
-      ringB.rotation.x -= dt * 1.1;
-      const pulse = Math.sin(t * 2.6 + phase);
-      halo.scale.setScalar(r * (2.8 + pulse * 0.3));
+      const rush = risky ? 1.8 : 1;
+      gem.rotation.y += dt * 1.4 * rush;
+      gem.rotation.x += dt * 0.5 * rush;
+      ringA.rotation.z += dt * 0.9 * rush;
+      ringB.rotation.x -= dt * 1.1 * rush;
+      const pulse = Math.sin(t * (risky ? 4.4 : 2.6) + phase);
+      halo.scale.setScalar(r * (2.8 + pulse * 0.3) * (risky ? 1.3 : 1));
       halo.material.opacity = 0.18 + pulse * 0.08;
-      
-      pillar.material.opacity = 0.15 + pulse * 0.05;
+
+      pillar.material.opacity = (risky ? 0.22 : 0.15) + pulse * 0.05;
     },
   };
 }
@@ -991,5 +1006,126 @@ export function createInterceptor({ radius: r = 0.5 } = {}) {
       aura.scale.setScalar(r * (2.5 + pulse * 0.2));
       aura.material.opacity = 0.15 + pulse * 0.05;
     }
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * PROYECTIL — the bolt a Centinela fires.
+ *
+ * Small, bright, and trailed by a stretched sprite so its direction of travel is
+ * readable at a glance. A projectile you cannot read the heading of is a
+ * projectile you cannot dodge, which would put it straight through the fairness
+ * floor the enemy design is built on.
+ * ------------------------------------------------------------------------- */
+export function createProjectile({ radius: r = 0.28 } = {}) {
+  const group = new THREE.Group();
+
+  const core = new THREE.Mesh(
+    once('boltGeo', () => new THREE.IcosahedronGeometry(r, 0)),
+    once('boltMat', () => new THREE.MeshStandardMaterial({
+      color: 0xffd9e2,
+      emissive: new THREE.Color(0xff2a6d),
+      emissiveIntensity: 1.4,
+      roughness: 0.2,
+      flatShading: true,
+    })),
+  );
+  group.add(core);
+
+  const trail = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0xff2a6d,
+    transparent: true,
+    opacity: 0.5,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  trail.scale.set(r * 2.2, r * 7, 1);
+  group.add(trail);
+
+  let t = 0;
+
+  return {
+    group,
+    update(dt) {
+      t += dt;
+      core.rotation.x += dt * 9;
+      core.rotation.y += dt * 7;
+      trail.material.opacity = 0.4 + Math.sin(t * 26) * 0.12;
+    },
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * BALIZA DE REANCLAJE — the checkpoint.
+ *
+ * Dormant it is a slow, cold ring; the moment Lúmen anchors to it the ring locks
+ * upright and turns to the player's own colour. The state change has to be
+ * unmistakable from a distance, because the whole value of a checkpoint is
+ * knowing you already have it.
+ * ------------------------------------------------------------------------- */
+export function createBeacon({ radius: r = 1.1 } = {}) {
+  const group = new THREE.Group();
+
+  const ring = new THREE.Mesh(
+    once('beaconRingGeo', () => new THREE.TorusGeometry(r, r * 0.09, 10, 36)),
+    new THREE.MeshStandardMaterial({
+      color: 0x9fd8ff,
+      emissive: new THREE.Color(0x2a4b7c),
+      emissiveIntensity: 0.5,
+      metalness: 0.9,
+      roughness: 0.25,
+    }),
+  );
+  ring.rotation.x = Math.PI / 2;
+  group.add(ring);
+
+  const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0x6ee7ff,
+    transparent: true,
+    opacity: 0.0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  pillar.scale.set(r * 1.4, r * 26, 1);
+  pillar.position.y = r * 9;
+  group.add(pillar);
+
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color: 0x6ee7ff,
+    transparent: true,
+    opacity: 0.12,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  halo.scale.setScalar(r * 3);
+  group.add(halo);
+
+  let t = 0;
+  let lit = 0;
+
+  return {
+    group,
+
+    react(kind) {
+      if (kind === 'anchor') lit = 1;
+    },
+
+    update(dt, s = {}) {
+      t += dt;
+      if (s.reached) lit = Math.min(1, lit + dt * 3);
+
+      const pulse = Math.sin(t * (1.4 + lit * 3.2));
+      ring.rotation.z += dt * (0.4 + lit * 2.2);
+      ring.material.emissiveIntensity = 0.5 + lit * 2.2 + pulse * 0.3;
+      ring.material.color.setHex(lit > 0.5 ? 0x6ee7ff : 0x9fd8ff);
+      ring.scale.setScalar(1 + lit * 0.25 + pulse * 0.03);
+
+      pillar.material.opacity = lit * (0.28 + pulse * 0.06);
+      halo.material.opacity = 0.1 + lit * 0.25 + pulse * 0.04;
+      halo.scale.setScalar(r * (3 + lit * 1.2 + pulse * 0.2));
+    },
   };
 }

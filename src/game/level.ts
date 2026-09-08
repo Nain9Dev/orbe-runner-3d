@@ -1,225 +1,258 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { spawn } from './prefabs.js';
-
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-
-/** PRNG determinista: el mismo nivel se genera igual en cualquier máquina. */
-function rng(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { composeLevel, rng } from './composer.js';
+import type { Blueprint } from './composer.js';
 
 /**
- * Construye el nivel `n` a partir de la fórmula de CONFIG.level.
+ * Builds Ciclo `n` from the blueprint produced by `composer.ts`.
  *
- * Un nivel es solo datos: si mañana quieres cargar niveles hechos a mano desde
- * un JSON, sustituyes esta función y el resto del juego no cambia.
+ * The split is deliberate. The composer decides *what* a Ciclo is — pure data,
+ * verifiable without a renderer. This module only turns that data into entities.
+ * Anything you want to reason about (is the route jumpable, is the rhythm right,
+ * are there enough Fragmentos) is decided upstream, where it can be tested.
+ *
+ * Note the absence of a floor. Earlier Ciclos rested on an infinite ground plane,
+ * which quietly cancelled the platforming: nothing you could do had a cost, so
+ * nothing you did had weight. The void is now real, and the Balizas placed by the
+ * composer are what keep that fair — a fall costs a layer of Núcleo, never your
+ * progress through the Ciclo. (REQ-024.19)
  */
 export function buildLevel(world, n, { lives = CONFIG.player.lives } = {}) {
-  const spec = CONFIG.level(n);
-  // La arena crece con el nivel para dar más espacio de maniobra
-  const size = CONFIG.world.arenaSize * (spec.arenaScale || 1.0);
-  const half = size / 2;
-  const random = rng(1000 + n * 7919);
+  const spec = CONFIG.levelSpec(n);
+  const blueprint = composeLevel(n);
+  const random = rng(50021 + n * 104729);
   const range = (min, max) => min + random() * (max - min);
 
   world.clearEntities();
 
-  // Suelo y muros perimetrales (evitan que el jugador se caiga al vacío).
-  spawn(world, 'ground', { size });
-  const h = CONFIG.world.wallHeight;
-  const t = 1;
-  const bridgeWidth = 6;
-  const frontWallSegWidth = Math.max(0, (size - bridgeWidth) / 2);
-  const walls = [
-    // Muro frontal con apertura para el puente inicial:
-    { pos: [-(bridgeWidth + frontWallSegWidth) / 2, h / 2, -half], size: [frontWallSegWidth, h, t] },
-    { pos: [(bridgeWidth + frontWallSegWidth) / 2, h / 2, -half], size: [frontWallSegWidth, h, t] },
-    // Muro trasero (sur) y laterales (oeste y este):
-    { pos: [0, h / 2, half], size: [size + t, h, t] },
-    { pos: [-half, h / 2, 0], size: [t, h, size + t] },
-    { pos: [half, h / 2, 0], size: [t, h, size + t] },
-  ];
-  for (const w of walls) {
-    if (w.size[0] <= 0) continue;
-    spawn(world, 'wall', {
-      position: new THREE.Vector3(...w.pos),
-      size: new THREE.Vector3(...w.size),
-    });
-  }
+  spawnScenery(world, blueprint, n, random, range);
+  spawnPlatforms(world, blueprint);
+  const beacons = spawnBeacons(world, blueprint);
+  spawnFragments(world, blueprint);
+  spawnPowerups(world, blueprint, n, random);
+  spawnEnemies(world, blueprint, spec, n, random, range);
 
-  // Fondo Monumental Procedural (Monolitos gigantes fuera de la arena)
-  const numMonoliths = 12 + n * 2;
-  for (let i = 0; i < numMonoliths; i++) {
-    const angle = random() * Math.PI * 2;
-    const dist = range(half + 20, half + 80);
-    const width = range(5, 20);
-    const depth = range(5, 20);
-    const mHeight = range(20, 100);
-    spawn(world, 'monolith', {
-      position: new THREE.Vector3(Math.cos(angle) * dist, mHeight / 2 - 10, Math.sin(angle) * dist),
-      width, height: mHeight, depth
-    });
-  }
-
-  // Plataformas: crear "caminos" y parkour.
-  const platforms = [];
-  let lastPos = new THREE.Vector3(0, 1.2, 0); // Start center
-  
-  // Set Piece 1: Puente inicial
-  for (let i = 0; i < 5; i++) {
-    const pos = new THREE.Vector3(0, 1.2 + i * 0.2, -6 * i);
-    spawn(world, 'platform', { position: pos, size: new THREE.Vector3(6, 1, 6) });
-    lastPos = pos;
-  }
-
-  // Generate chunks based on spec platforms count
-  for (let i = 0; i < spec.platforms; i += 3) {
-    const r = random();
-    
-    // Elige un patrón
-    if (r < 0.3 && n >= 2) {
-      // Escaleras en espiral
-      for (let j = 0; j < 4; j++) {
-        const angle = j * Math.PI / 2;
-        const pos = lastPos.clone().add(new THREE.Vector3(Math.cos(angle) * 8, 2 + j * 1.5, Math.sin(angle) * 8));
-        const size = new THREE.Vector3(6, 1, 6);
-        spawn(world, 'platform', { position: pos, size });
-        platforms.push({ position: pos, size, isCrumbling: false });
-        if (j === 3) lastPos = pos;
-      }
-    } else if (r < 0.6 && n >= 3) {
-      // Obstáculo móvil y foso
-      lastPos.y += 1;
-      lastPos.z -= 10;
-      const mSize = new THREE.Vector3(6, 1, 6);
-      spawn(world, 'moving_platform', { position: lastPos.clone(), size: mSize, axis: 'x', range: 8, speed: 2 });
-      platforms.push({ position: lastPos.clone(), size: mSize, isCrumbling: false });
-      
-      lastPos.z -= 10;
-      spawn(world, 'platform', { position: lastPos.clone(), size: mSize });
-      platforms.push({ position: lastPos.clone(), size: mSize, isCrumbling: false });
-    } else {
-      // Plataforma colapsable o normal grande
-      lastPos.z -= range(8, 12);
-      lastPos.y += range(-1, 2);
-      lastPos.x += range(-6, 6);
-      const isCrumbling = n >= 3 && random() < 0.4;
-      const size = new THREE.Vector3(8, 1, 8);
-      spawn(world, isCrumbling ? 'crumbling_platform' : 'platform', { position: lastPos.clone(), size });
-      platforms.push({ position: lastPos.clone(), size, isCrumbling });
-      
-      // Si la plataforma es muy alta o por azar, poner un Bounce Pad para ayudar
-      if (!isCrumbling && (lastPos.y > 4.5 || random() < 0.5)) {
-        spawn(world, 'bounce_pad', {
-          position: new THREE.Vector3(lastPos.x, lastPos.y + 0.4, lastPos.z)
-        });
-      }
-    }
-  }
-  
-  // Zonas de Lava (Muerte instantánea a nivel de suelo)
-  if (n >= 3) {
-    const lavaCount = Math.floor(n / 2);
-    for (let i = 0; i < lavaCount; i++) {
-      spawn(world, 'lava', {
-        position: new THREE.Vector3(range(-half + 10, half - 10), 0.6, range(-half + 10, half - 10)),
-        size: new THREE.Vector3(range(6, 12), 0.2, range(6, 12))
-      });
-    }
-  }
-
-  // Orbes: forzamos que el 85% estén sobre las plataformas para incentivar saltar
-  for (let i = 0; i < spec.orbs; i++) {
-    const onPlatform = platforms.length > 0 && random() < 0.85;
-    let position;
-    if (onPlatform) {
-      const p = platforms[Math.floor(random() * platforms.length)];
-      position = new THREE.Vector3(
-        p.position.x + range(-p.size.x / 3, p.size.x / 3),
-        p.position.y + 1.4,
-        p.position.z + range(-p.size.z / 3, p.size.z / 3),
-      );
-    } else {
-      position = new THREE.Vector3(range(-half + 3, half - 3), 1.2, range(-half + 3, half - 3));
-    }
-    spawn(world, 'orb', { position });
-  }
-
-  // Cazadores: nunca junto al punto de aparición del jugador.
-  for (let i = 0; i < spec.enemies; i++) {
-    let position;
-    do {
-      position = new THREE.Vector3(range(-half + 3, half - 3), 1.5, range(-half + 3, half - 3));
-    } while (position.length() < 14);
-
-    let type = 'tracker';
-    if (n >= 5) {
-      const rand = random();
-      type = rand < 0.05 ? 'tank' : rand < 0.25 ? 'stalker' : rand < 0.35 ? 'turret' : 'tracker';
-    } else if (n >= 3) {
-      type = random() < 0.3 ? 'stalker' : 'tracker';
-    }
-
-    if (random() < 0.2 && n >= 2) {
-      spawn(world, 'interceptor', { position });
-    } else {
-      spawn(world, 'enemy', { position, speed: spec.enemySpeed, type });
-    }
-  }
-
-  // Jefe (Centinela) cada 5 niveles
-  if (n > 0 && n % 5 === 0) {
-    spawn(world, 'enemy', {
-      position: new THREE.Vector3(0, 5, -half + 10), // Aparece al fondo
-      speed: spec.enemySpeed * 0.8,
-      type: 'boss'
-    });
-  }
-
-  // Powerups (a partir del nivel 2)
-  if (n >= 2) {
-    const powerupCount = n >= 4 && random() < 0.5 ? 2 : 1;
-    for (let i = 0; i < powerupCount; i++) {
-      const types = ['shield', 'magnet', 'jump', 'time'];
-      const type = types[Math.floor(random() * types.length)];
-      
-      // Pueden aparecer en el suelo o en una plataforma
-      let position;
-      if (platforms.length > 0 && random() < 0.7) {
-        const p = platforms[Math.floor(random() * platforms.length)];
-        position = new THREE.Vector3(
-          p.position.x + range(-p.size.x / 3, p.size.x / 3),
-          p.position.y + p.size.y / 2 + 1,
-          p.position.z + range(-p.size.z / 3, p.size.z / 3),
-        );
-      } else {
-        position = new THREE.Vector3(range(-half + 3, half - 3), 1.2, range(-half + 3, half - 3));
-      }
-      
-      spawn(world, 'powerup', { position, type });
-    }
-    
-    // 30% de probabilidad de spawnear un Dron aliado
-    if (random() < 0.3) {
-      spawn(world, 'drone', { position: new THREE.Vector3(0, 2, 0) });
-    }
-  }
-  const player = spawn(world, 'player', { position: new THREE.Vector3(0, 2, 0) });
+  const player = spawn(world, 'player', {
+    position: new THREE.Vector3(blueprint.origin.x, blueprint.origin.y + 1.4, blueprint.origin.z),
+  });
   player.player.lives = lives;
+  player.player.maxLives = CONFIG.player.lives;
+  player.player.checkpoint = player.transform.position.clone();
 
-  world.state.level = n;
-  world.state.collected = 0;
-  world.state.totalOrbs = spec.orbs;
-  world.state.lives = player.player.lives;
-  world.state.status = 'playing';
-  world.events.emit('level:built', { level: n, spec });
+  Object.assign(world.state, {
+    level: n,
+    collected: 0,
+    totalOrbs: blueprint.fragments.length,
+    totalValue: blueprint.fragments.reduce(
+      (sum, f) => sum + (f.tier === 'risk' ? CONFIG.pickup.riskValue : CONFIG.pickup.pathValue),
+      0,
+    ),
+    integrity: player.player.lives,
+    maxIntegrity: player.player.maxLives,
+    lives: player.player.lives,          // deprecated mirror, see docs/21-data-model.md
+    critical: player.player.lives <= 1,
+    shield: false,
+    buff: null,
+    dashRatio: 1,
+    dashing: false,
+    beacons: beacons.length,
+    sequence: blueprint.sequence,
+    status: 'playing',
+  });
+
+  world.events.emit('level:built', { level: n, spec, blueprint });
 
   return player;
+}
+
+/* -------------------------------------------------------------------------- */
+
+function spawnScenery(world, blueprint: Blueprint, n, random, range) {
+  const bounds = pathBounds(blueprint);
+  const spread = Math.max(bounds.width, bounds.depth);
+
+  // The abyss: a decorative grid far below, so the void reads as a place rather
+  // than as a rendering bug. Non-solid on purpose.
+  spawn(world, 'abyss', {
+    position: new THREE.Vector3(bounds.centerX, -16, bounds.centerZ),
+    size: spread * 3,
+  });
+
+  // Monoliths give the eye something to measure speed against. They sit well
+  // clear of the route so they never become accidental platforms.
+  const count = 14 + n * 2;
+  for (let i = 0; i < count; i++) {
+    const angle = random() * Math.PI * 2;
+    const dist = range(spread * 0.6 + 30, spread * 0.6 + 110);
+    const height = range(24, 120);
+    spawn(world, 'monolith', {
+      position: new THREE.Vector3(
+        bounds.centerX + Math.cos(angle) * dist,
+        height / 2 - 26,
+        bounds.centerZ + Math.sin(angle) * dist,
+      ),
+      width: range(6, 22),
+      height,
+      depth: range(6, 22),
+    });
+  }
+}
+
+function spawnPlatforms(world, blueprint: Blueprint) {
+  for (const p of blueprint.platforms) {
+    const position = new THREE.Vector3(p.position.x, p.position.y, p.position.z);
+    const size = new THREE.Vector3(p.size.x, p.size.y, p.size.z);
+
+    switch (p.kind) {
+      case 'crumbling':
+        spawn(world, 'crumbling_platform', { position, size });
+        break;
+      case 'moving':
+        spawn(world, 'moving_platform', {
+          position,
+          size,
+          axis: p.axis ?? 'x',
+          range: p.sway ?? 4,
+          speed: p.speed ?? 1.5,
+        });
+        break;
+      case 'bounce_pad':
+        spawn(world, 'bounce_pad', { position, size });
+        break;
+      case 'lava':
+        spawn(world, 'lava', { position, size });
+        break;
+      default:
+        spawn(world, 'platform', { position, size });
+    }
+  }
+}
+
+/**
+ * The first Baliza in the blueprint is the origin itself. Lúmen already spawns
+ * anchored there, so spawning a ring around it would put a two-metre halo over
+ * the player on frame one and fire a "BALIZA ANCLADA" toast for a checkpoint
+ * they never travelled to. It stays in the blueprint — it *is* the first
+ * checkpoint — it just has no entity.
+ */
+function spawnBeacons(world, blueprint: Blueprint) {
+  return blueprint.beacons.slice(1).map((b) =>
+    spawn(world, 'beacon', { position: new THREE.Vector3(b.x, b.y, b.z) }),
+  );
+}
+
+function spawnFragments(world, blueprint: Blueprint) {
+  for (const f of blueprint.fragments) {
+    spawn(world, 'orb', {
+      position: new THREE.Vector3(f.position.x, f.position.y, f.position.z),
+      value: f.tier === 'risk' ? CONFIG.pickup.riskValue : CONFIG.pickup.pathValue,
+      tier: f.tier,
+    });
+  }
+}
+
+function spawnPowerups(world, blueprint: Blueprint, n, random) {
+  if (n < 2) return;
+  const types = ['shield', 'magnet', 'jump', 'time'];
+  const howMany = n >= 4 && random() < 0.5 ? 2 : 1;
+
+  for (let i = 0; i < howMany; i++) {
+    const anchor = blueprint.path[Math.floor(random() * blueprint.path.length)] ?? blueprint.origin;
+    spawn(world, 'powerup', {
+      position: new THREE.Vector3(anchor.x, anchor.y + 1.6, anchor.z),
+      type: types[Math.floor(random() * types.length)],
+    });
+  }
+
+  // An escort drone shows up occasionally; it fires at whatever is closest.
+  if (random() < 0.35) {
+    spawn(world, 'drone', {
+      position: new THREE.Vector3(blueprint.origin.x + 2, blueprint.origin.y + 3, blueprint.origin.z),
+    });
+  }
+}
+
+/**
+ * Sombras are placed on the slots the chunks reserved, which is what keeps them
+ * on solid ground and out of the landing zone of a jump. Slots run out before
+ * the Ciclo's enemy budget does at higher numbers, so the remainder is
+ * distributed along the route — never within eight units of the start, so the
+ * player is never ambushed on spawn.
+ */
+function spawnEnemies(world, blueprint: Blueprint, spec, n, random, range) {
+  const slots = [...blueprint.enemySlots];
+  const budget = spec.enemies;
+
+  for (let i = 0; i < budget; i++) {
+    let anchor = slots.length > 0
+      ? slots.splice(Math.floor(random() * slots.length), 1)[0]
+      : blueprint.path[Math.floor(random() * blueprint.path.length)];
+    if (!anchor) break;
+
+    const position = new THREE.Vector3(
+      anchor.x + range(-3, 3),
+      anchor.y + 1.4,
+      anchor.z + range(-3, 3),
+    );
+    if (position.distanceTo(new THREE.Vector3(blueprint.origin.x, blueprint.origin.y, blueprint.origin.z)) < 12) {
+      position.z -= 14;
+    }
+
+    spawn(world, 'enemy', { position, speed: spec.enemySpeed, type: pickArchetype(random, n) });
+  }
+
+  // The Devorador presides over every fifth Ciclo, waiting at the exit.
+  if (n > 0 && n % 5 === 0) {
+    spawn(world, 'enemy', {
+      position: new THREE.Vector3(blueprint.exit.x, blueprint.exit.y + 4, blueprint.exit.z - 6),
+      speed: spec.enemySpeed * 0.8,
+      type: 'boss',
+    });
+  }
+}
+
+/**
+ * Archetype mix by Ciclo. Early Ciclos are all Rastreadores so the player learns
+ * one behaviour properly; each band then introduces exactly one new idea.
+ */
+function pickArchetype(random, n) {
+  const r = random();
+  if (n >= 6) {
+    if (r < 0.06) return 'tank';
+    if (r < 0.20) return 'turret';
+    if (r < 0.34) return 'interceptor';
+    if (r < 0.58) return 'stalker';
+    return 'tracker';
+  }
+  if (n >= 4) {
+    if (r < 0.16) return 'turret';
+    if (r < 0.38) return 'stalker';
+    return 'tracker';
+  }
+  if (n >= 2) return r < 0.3 ? 'stalker' : 'tracker';
+  return 'tracker';
+}
+
+function pathBounds(blueprint: Blueprint) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+
+  for (const p of blueprint.platforms) {
+    minX = Math.min(minX, p.position.x);
+    maxX = Math.max(maxX, p.position.x);
+    minZ = Math.min(minZ, p.position.z);
+    maxZ = Math.max(maxZ, p.position.z);
+  }
+
+  if (!Number.isFinite(minX)) return { centerX: 0, centerZ: 0, width: 40, depth: 40 };
+
+  return {
+    centerX: (minX + maxX) / 2,
+    centerZ: (minZ + maxZ) / 2,
+    width: Math.max(40, maxX - minX),
+    depth: Math.max(40, maxZ - minZ),
+  };
 }

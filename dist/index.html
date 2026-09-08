@@ -2,30 +2,36 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orbe Runner 3D</title>
-  <meta name="description" content="Videojuego 3D open source hecho desde cero: recoge los orbes, esquiva a los cazadores y sube de nivel. Sin instalar nada, juega en el navegador." />
-  <meta name="theme-color" content="#0b1020" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Orbe Runner 3D — Lúmen</title>
+  <meta name="description" content="Videojuego 3D open source hecho desde cero: recupera los Fragmentos de Estrella, esquiva a las Sombras y cruza el siguiente Ciclo. Sin instalar nada, juega en el navegador." />
+  <meta name="theme-color" content="#030514" />
 
   <!-- Vista previa al compartir el enlace -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Orbe Runner 3D" />
+  <meta property="og:title" content="Orbe Runner 3D — Lúmen" />
   <meta property="og:description" content="Videojuego 3D open source hecho desde cero. Juega en el navegador, sin instalar nada." />
   <meta property="og:url" content="https://orbe.naindev.com/" />
   <meta property="og:image" content="https://orbe.naindev.com/preview.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2305d9e8'/></svg>" />
-
-  <!-- Elimina el import map, Vite resuelve three -->
-  <script type="module" crossorigin src="./assets/index-DDcPT-ww.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CtLWh4ju.css">
+  <script type="module" crossorigin src="./assets/index-DaUdg2n6.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-_Z8dj0Kb.css">
 </head>
 <body>
-  <div id="damage-vignette"></div>
+  <!-- Capas de pantalla completa: viñetas de daño e integridad crítica -->
+  <div id="screen-fx" aria-hidden="true">
+    <div id="damage-vignette"></div>
+    <div id="critical-vignette"></div>
+    <div id="dash-streaks"></div>
+  </div>
+
   <canvas id="game"></canvas>
 
-  <!-- Controles Táctiles (solo móviles) -->
+  <!-- Controles táctiles (solo móviles) -->
   <div id="touch-controls" class="hidden">
     <div id="touch-left-zone">
       <div id="touch-joystick-base" class="hidden">
@@ -33,97 +39,179 @@
       </div>
     </div>
     <div id="touch-right-zone">
-      <button id="touch-dash-btn" aria-label="Acelerón">💨</button>
-      <button id="touch-jump-btn" aria-label="Saltar">⬆️</button>
+      <button id="touch-dash-btn" aria-label="Impulso">⟫</button>
+      <button id="touch-jump-btn" aria-label="Saltar">⬆</button>
     </div>
   </div>
 
   <!-- HUD: capa DOM independiente del render 3D -->
   <div id="hud">
-    <!-- Esquina Superior Izquierda: Nivel y FPS -->
-    <div class="hud-top-left">
-      <div id="hud-level" class="hud-text">NIVEL 1</div>
+    <!-- Superior izquierda: Ciclo y progreso de Fragmentos -->
+    <div class="hud-corner hud-top-left">
+      <div id="hud-level" class="hud-text">CICLO 1</div>
+      <div class="hud-progress" role="progressbar" aria-label="Fragmentos recuperados"
+           aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" id="hud-progress">
+        <div class="hud-progress-track"><div class="hud-progress-fill" id="hud-progress-fill"></div></div>
+        <div class="hud-progress-label">
+          <span id="hud-score">0</span><span class="dim"> / </span><span id="hud-total">0</span>
+          <span class="dim">FRAGMENTOS</span>
+        </div>
+      </div>
       <div id="hud-fps" class="hud-subtext">-- FPS</div>
-      <div id="hud-combo" class="hud-powerup-text" style="display: none; color: #ff2a6d; margin-top: 5px;">COMBO x2</div>
     </div>
 
-    <!-- Centro Superior: Powerups -->
+    <!-- Superior derecha: Resonancia y luz acumulada -->
+    <div class="hud-corner hud-top-right">
+      <div id="hud-combo" class="combo" hidden>
+        <svg class="combo-ring" viewBox="0 0 44 44" aria-hidden="true">
+          <circle class="combo-ring-track" cx="22" cy="22" r="19"></circle>
+          <circle class="combo-ring-arc" id="hud-combo-arc" cx="22" cy="22" r="19"></circle>
+        </svg>
+        <div class="combo-value"><span id="hud-combo-value">2</span></div>
+        <div class="combo-label">RESONANCIA</div>
+      </div>
+      <div class="hud-text">LUZ</div>
+      <div id="hud-light" class="hud-value">0</div>
+    </div>
+
+    <!-- Superior centro: ventaja temporal activa -->
     <div class="hud-top-center">
-      <div id="hud-powerup" class="hud-powerup-text" style="display: none;"></div>
+      <div id="hud-powerup" class="powerup-chip" hidden>
+        <span id="hud-powerup-icon" class="powerup-icon">🛡</span>
+        <span id="hud-powerup-name" class="powerup-name">Escudo</span>
+        <span id="hud-powerup-time" class="powerup-time">15s</span>
+      </div>
     </div>
 
-    <!-- Esquina Superior Derecha: Fragmentos -->
-    <div class="hud-top-right">
-      <div class="hud-text">FRAGMENTOS</div>
-      <div id="hud-score" class="hud-value">0</div>
+    <!-- Centro: retícula con el anillo de recarga del Impulso -->
+    <div class="hud-reticle" id="hud-reticle">
+      <svg class="dash-ring" viewBox="0 0 40 40" aria-hidden="true">
+        <circle class="dash-ring-track" cx="20" cy="20" r="16"></circle>
+        <circle class="dash-ring-arc" id="hud-dash-arc" cx="20" cy="20" r="16"></circle>
+      </svg>
+      <div class="reticle-dot"></div>
     </div>
 
-    <!-- Centro: Retícula -->
-    <div class="hud-reticle"></div>
+    <!-- Avisos transitorios -->
+    <div id="hud-toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
 
-    <!-- Centro Inferior: Barra de Vida -->
+    <!-- Inferior centro: INTEGRIDAD DEL NÚCLEO -->
     <div class="hud-bottom-center">
-      <div class="health-label">INTEGRIDAD DEL NÚCLEO</div>
-      <div id="health-pips" class="health-bar-container" aria-label="Vidas de Lúmen">
-        <!-- Pips geométricos generados por JS -->
+      <div id="integrity" class="integrity" role="meter" aria-label="Integridad del Núcleo"
+           aria-valuemin="0" aria-valuemax="3" aria-valuenow="3" aria-valuetext="Integridad 3 de 3">
+        <div class="integrity-head">
+          <span class="integrity-label">INTEGRIDAD DEL NÚCLEO</span>
+          <span class="integrity-readout"><span id="integrity-now">3</span><span class="dim">/</span><span id="integrity-max">3</span></span>
+        </div>
+        <div class="integrity-bar" id="integrity-bar">
+          <!-- Los segmentos los genera src/ui/health.ts -->
+        </div>
+        <div class="integrity-shield" id="integrity-shield" hidden>
+          <span class="shield-glyph">🛡</span> ESCUDO ACTIVO
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Menús -->
   <div id="overlay">
-    <div class="panel">
+    <div class="panel" id="panel-main">
+      <div class="panel-mark" aria-hidden="true"></div>
       <h1 id="overlay-title">LÚMEN</h1>
-      <p id="overlay-text">Salva la luz. Recoge los fragmentos estelares y escapa de las Sombras.</p>
-      
+      <p id="overlay-text">La última chispa del Vacío. Recupera los Fragmentos de Estrella, esquiva a las Sombras y cruza el Ciclo.</p>
+
       <div class="controls-grid">
         <div class="control-key"><span>W A S D</span> MOVERSE</div>
         <div class="control-key"><span>ESPACIO</span> SALTAR</div>
-        <div class="control-key"><span>SHIFT</span> DASH</div>
+        <div class="control-key"><span>SHIFT</span> IMPULSO</div>
         <div class="control-key"><span>RATÓN</span> CÁMARA</div>
-        <div class="control-key"><span>ESC</span> MENÚ/PAUSA</div>
+        <div class="control-key"><span>ESC</span> PAUSA</div>
       </div>
+
+      <p class="panel-hint">El Impulso atraviesa a las Sombras frágiles y las fractura.</p>
 
       <div class="panel-actions">
-        <button id="start" class="btn-primary" disabled>CARGANDO...</button>
+        <button id="start" class="btn-primary">JUGAR</button>
         <button id="btn-settings" class="btn-secondary">AJUSTES</button>
+        <button id="btn-registry" class="btn-secondary">REGISTRO</button>
       </div>
     </div>
-    
+
     <div id="settings-panel" class="panel hidden">
-      <h1>Ajustes</h1>
-      
+      <h1>AJUSTES</h1>
+
       <div class="setting-group">
-        <label>Nivel Inicial:</label>
+        <label id="lvl-label">Ciclo inicial</label>
         <div class="level-selector">
-          <button id="lvl-down" class="btn-icon" aria-label="Bajar nivel">-</button>
-          <span id="lvl-display" aria-live="polite">1</span>
-          <button id="lvl-up" class="btn-icon" aria-label="Subir nivel">+</button>
+          <button id="lvl-down" class="btn-icon" aria-label="Bajar de Ciclo">−</button>
+          <span id="lvl-display" aria-live="polite" aria-labelledby="lvl-label">1</span>
+          <button id="lvl-up" class="btn-icon" aria-label="Subir de Ciclo">+</button>
         </div>
       </div>
-      
+
       <div class="setting-group">
-        <label>Color de Lúmen:</label>
-        <div class="color-picker" id="color-picker" role="radiogroup" aria-label="Seleccionar color">
-          <button class="color-btn active" data-color="0x6ee7ff" style="background: #6ee7ff; box-shadow: 0 0 10px #6ee7ff;" aria-label="Color Cyan" role="radio" aria-checked="true"></button>
-          <button class="color-btn" data-color="0xff2a6d" style="background: #ff2a6d; box-shadow: 0 0 10px #ff2a6d;" aria-label="Color Rosa" role="radio" aria-checked="false"></button>
-          <button class="color-btn" data-color="0xffc44d" style="background: #ffc44d; box-shadow: 0 0 10px #ffc44d;" aria-label="Color Amarillo" role="radio" aria-checked="false"></button>
-          <button class="color-btn" data-color="0x39ff14" style="background: #39ff14; box-shadow: 0 0 10px #39ff14;" aria-label="Color Verde" role="radio" aria-checked="false"></button>
+        <label>Frecuencia de Lúmen</label>
+        <div class="color-picker" id="color-picker" role="radiogroup" aria-label="Frecuencia de Lúmen">
+          <button class="color-btn active" data-color="0x6ee7ff" style="--swatch:#6ee7ff" aria-label="Cian" role="radio" aria-checked="true"></button>
+          <button class="color-btn" data-color="0xff2a6d" style="--swatch:#ff2a6d" aria-label="Carmesí" role="radio" aria-checked="false"></button>
+          <button class="color-btn" data-color="0xffc44d" style="--swatch:#ffc44d" aria-label="Ámbar" role="radio" aria-checked="false"></button>
+          <button class="color-btn" data-color="0x39ff14" style="--swatch:#39ff14" aria-label="Verde" role="radio" aria-checked="false"></button>
+          <button class="color-btn" data-color="0xb14dff" style="--swatch:#b14dff" aria-label="Violeta" role="radio" aria-checked="false"></button>
         </div>
       </div>
 
-      <div class="setting-group" style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="margin: 0;">Sonido</label>
-        <button id="btn-sound" class="btn-toggle active" aria-label="Alternar sonido">ON</button>
+      <div class="setting-group setting-row">
+        <label for="btn-sound">Sonido</label>
+        <button id="btn-sound" class="btn-toggle active" aria-pressed="true">ON</button>
       </div>
 
-      <div class="setting-group" style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="margin: 0;">Calidad Gráfica</label>
-        <button id="btn-gfx" class="btn-toggle active" aria-label="Alternar gráficos altos o bajos">ALTA</button>
+      <div class="setting-group setting-row">
+        <label for="btn-gfx">Calidad gráfica</label>
+        <button id="btn-gfx" class="btn-toggle active" aria-pressed="true">ALTA</button>
       </div>
-      
-      <button id="btn-save" class="btn-primary" style="margin-top: 30px; width: 100%;">VOLVER</button>
+
+      <div class="setting-group setting-row">
+        <label for="btn-shake">Sacudida de cámara</label>
+        <button id="btn-shake" class="btn-toggle active" aria-pressed="true">ON</button>
+      </div>
+
+      <button id="btn-save" class="btn-primary full">VOLVER</button>
+    </div>
+
+    <div id="registry-panel" class="panel hidden">
+      <h1>REGISTRO</h1>
+      <p class="panel-hint">Registro de campo del último Ciclo estable.</p>
+
+      <div class="registry">
+        <article class="registry-entry">
+          <h2>Lúmen</h2>
+          <p>La última chispa de luz coherente. No puede atacar: sólo correr, saltar y atravesar. Su <strong>Núcleo</strong> tiene tres capas; cada golpe arranca una.</p>
+        </article>
+        <article class="registry-entry">
+          <h2>Fragmentos de Estrella</h2>
+          <p>Restos de las estrellas que el Vacío ya consumió. Los ámbar están en la ruta; los <strong>violetas</strong> valen el triple y nunca están donde deberías estar.</p>
+        </article>
+        <article class="registry-entry">
+          <h2>Sombras</h2>
+          <p><strong>Rastreador</strong> te sigue y embiste. <strong>Acechante</strong> orbita y golpea. <strong>Coloso</strong> salta y revienta el suelo. <strong>Centinela</strong> no se mueve: dispara. <strong>Devorador</strong> preside cada quinto Ciclo.</p>
+        </article>
+        <article class="registry-entry">
+          <h2>Impulso</h2>
+          <p>Un salto lateral en el espacio, no en el tiempo. Durante el Impulso nada puede tocarte, y las Sombras frágiles se fracturan al contacto.</p>
+        </article>
+        <article class="registry-entry">
+          <h2>Balizas</h2>
+          <p>Anclas de reanclaje. Si caes al Vacío pierdes una capa de Núcleo, pero vuelves a la última Baliza, no al principio del Ciclo.</p>
+        </article>
+        <article class="registry-entry">
+          <h2>Resonancia</h2>
+          <p>Cada Fragmento y cada Sombra fracturada la suben. Mientras dure, Lúmen corre hasta un 30 % más rápido. Tres segundos sin alimentarla y se apaga.</p>
+        </article>
+      </div>
+
+      <button id="btn-registry-back" class="btn-primary full">VOLVER</button>
     </div>
   </div>
-
+
 </body>
 </html>
