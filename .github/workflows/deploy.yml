@@ -36,7 +36,13 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
-        
+
+      # The Zero Bug Policy in AGENTS.md says main stays 100 % playable. This
+      # workflow used to build and publish without running a single test, so a
+      # red suite shipped to production unnoticed.
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
         

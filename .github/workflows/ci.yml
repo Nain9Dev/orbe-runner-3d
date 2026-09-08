@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Type checking is deliberately NOT a gate yet.
+      #
+      # The sources were renamed from `.js` to `.ts` without being typed, and
+      # `tsconfig.json` sets `strict: true`, so `tsc --noEmit` currently reports
+      # 451 pre-existing errors. Turning that into a required check would make
+      # the pipeline permanently red and block every unrelated change, which is
+      # the opposite of what a gate is for.
+      #
+      # It runs here for visibility, and does not fail the job. Tracked in
+      # docs/11-open-questions.md (OQ-002); the gate becomes required in the
+      # spec that types the engine.
+      - name: Type check (informational)
+        continue-on-error: true
+        run: npx tsc --noEmit
